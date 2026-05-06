@@ -60,6 +60,7 @@
                 class="form-control"
                 :class="{ invalid: collegeErrors.name }"
                 maxlength="255"
+                @input="collegeData.name = normalizeTextInput(collegeData.name, 255)"
                 required
               >
               <small v-if="collegeErrors.name" class="field-error">{{ collegeErrors.name }}</small>
@@ -83,6 +84,7 @@
               :class="{ invalid: collegeErrors.description }"
               rows="4"
               maxlength="3000"
+              @input="collegeData.description = normalizeMultilineInput(collegeData.description, 3000)"
               required
             ></textarea>
             <small v-if="collegeErrors.description" class="field-error">{{ collegeErrors.description }}</small>
@@ -132,6 +134,7 @@
                 class="form-control" 
                 min="0" 
                 max="5"
+                @input="collegeData.avg_score = maskScore(collegeData.avg_score)"
               >
               <small v-if="collegeErrors.avg_score" class="field-error">{{ collegeErrors.avg_score }}</small>
             </div>
@@ -146,6 +149,7 @@
                 class="form-control" 
                 min="0" 
                 max="5"
+                @input="collegeData.min_score = maskScore(collegeData.min_score)"
               >
               <small v-if="collegeErrors.min_score" class="field-error">{{ collegeErrors.min_score }}</small>
             </div>
@@ -181,6 +185,7 @@
                 class="form-control"
                 :class="{ invalid: collegeErrors.email }"
                 maxlength="255"
+                @input="collegeData.email = normalizeEmailInput(collegeData.email)"
                 required
               >
               <small v-if="collegeErrors.email" class="field-error">{{ collegeErrors.email }}</small>
@@ -197,6 +202,7 @@
                 class="form-control"
                 :class="{ invalid: collegeErrors.website }"
                 maxlength="255"
+                @input="collegeData.website = normalizeUrlInput(collegeData.website)"
               >
               <small v-if="collegeErrors.website" class="field-error">{{ collegeErrors.website }}</small>
             </div>
@@ -215,6 +221,7 @@
                   class="form-control"
                   :class="{ invalid: collegeErrors.social_vk }"
                   maxlength="255"
+                  @input="collegeData.social_vk = normalizeUrlInput(collegeData.social_vk)"
                 >
                 <small v-if="collegeErrors.social_vk" class="field-error">{{ collegeErrors.social_vk }}</small>
               </div>
@@ -227,6 +234,7 @@
                   class="form-control"
                   :class="{ invalid: collegeErrors.social_max }"
                   maxlength="255"
+                  @input="collegeData.social_max = normalizeUrlInput(collegeData.social_max)"
                 >
                 <small v-if="collegeErrors.social_max" class="field-error">{{ collegeErrors.social_max }}</small>
               </div>
@@ -238,6 +246,7 @@
                 id="college-social-other"
                 class="form-control"
                 rows="4"
+                maxlength="5000"
               ></textarea>
             </div>
           </div>
@@ -366,6 +375,8 @@
                 type="text" 
                 id="prof-cluster" 
                 class="form-control"
+                maxlength="255"
+                @input="collegeData.professionalitet_cluster = normalizeTextInput(collegeData.professionalitet_cluster, 255)"
               >
             </div>
           </div>
@@ -514,13 +525,13 @@
           <div class="settings-grid">
             <div class="form-group">
               <label>Название специальности <span class="required">*</span></label>
-              <input v-model="specialityForm.name" type="text" class="form-control" :class="{ invalid: specialityErrors.name }" maxlength="255" required>
+              <input v-model="specialityForm.name" type="text" class="form-control" :class="{ invalid: specialityErrors.name }" maxlength="255" @input="specialityForm.name = normalizeTextInput(specialityForm.name, 255)" required>
               <small v-if="specialityErrors.name" class="field-error">{{ specialityErrors.name }}</small>
             </div>
             
             <div class="form-group">
               <label>Код специальности <span class="required">*</span></label>
-              <input v-model="specialityForm.code" type="text" class="form-control" :class="{ invalid: specialityErrors.code }" placeholder="00.00.00" maxlength="11" required>
+              <input v-model="specialityForm.code" type="text" class="form-control" :class="{ invalid: specialityErrors.code }" placeholder="00.00.00" maxlength="11" @input="specialityForm.code = maskSpecialtyCode(specialityForm.code)" required>
               <small v-if="specialityErrors.code" class="field-error">{{ specialityErrors.code }}</small>
             </div>
           </div>
@@ -528,7 +539,7 @@
           <div class="settings-grid">
             <div class="form-group">
               <label>Срок обучения <span class="required">*</span></label>
-              <input v-model="specialityForm.duration" type="text" class="form-control" :class="{ invalid: specialityErrors.duration }" maxlength="100" required>
+              <input v-model="specialityForm.duration" type="text" class="form-control" :class="{ invalid: specialityErrors.duration }" maxlength="100" @input="specialityForm.duration = normalizeTextInput(specialityForm.duration, 100)" required>
               <small v-if="specialityErrors.duration" class="field-error">{{ specialityErrors.duration }}</small>
             </div>
             
@@ -545,7 +556,7 @@
           <div class="settings-grid">
             <div class="form-group">
               <label>Стоимость обучения (руб/год)</label>
-              <input v-model.number="specialityForm.price_per_year" type="number" class="form-control" :class="{ invalid: specialityErrors.price_per_year }" min="0">
+              <input v-model.number="specialityForm.price_per_year" type="number" class="form-control" :class="{ invalid: specialityErrors.price_per_year }" min="0" max="10000000" @input="specialityForm.price_per_year = maskInteger(specialityForm.price_per_year, 10000000)">
               <small v-if="specialityErrors.price_per_year" class="field-error">{{ specialityErrors.price_per_year }}</small>
             </div>
           </div>
@@ -553,30 +564,30 @@
           <div class="settings-grid">
             <div class="form-group">
               <label>Количество бюджетных мест</label>
-              <input v-model.number="specialityForm.budget_places" type="number" class="form-control" :class="{ invalid: specialityErrors.budget_places }" min="0" max="10000">
+              <input v-model.number="specialityForm.budget_places" type="number" class="form-control" :class="{ invalid: specialityErrors.budget_places }" min="0" max="10000" @input="specialityForm.budget_places = maskInteger(specialityForm.budget_places, 10000)">
               <small v-if="specialityErrors.budget_places" class="field-error">{{ specialityErrors.budget_places }}</small>
             </div>
             <div class="form-group">
               <label>Количество коммерческих мест</label>
-              <input v-model.number="specialityForm.commercial_places" type="number" class="form-control" :class="{ invalid: specialityErrors.commercial_places }" min="0" max="10000">
+              <input v-model.number="specialityForm.commercial_places" type="number" class="form-control" :class="{ invalid: specialityErrors.commercial_places }" min="0" max="10000" @input="specialityForm.commercial_places = maskInteger(specialityForm.commercial_places, 10000)">
               <small v-if="specialityErrors.commercial_places" class="field-error">{{ specialityErrors.commercial_places }}</small>
             </div>
           </div>
           
           <div class="form-group">
             <label>Вступительные испытания (через запятую)</label>
-            <input v-model="specialityForm.exams" type="text" class="form-control" placeholder="Например: Математика, русский язык">
+            <input v-model="specialityForm.exams" type="text" class="form-control" placeholder="Например: Математика, русский язык" maxlength="500" @input="specialityForm.exams = normalizeTextInput(specialityForm.exams, 500)">
           </div>
           
           <div class="form-group">
             <label>Средний балл аттестата (прошлый год)</label>
-            <input v-model.number="specialityForm.avg_score" type="number" step="0.1" class="form-control" :class="{ invalid: specialityErrors.avg_score }" min="0" max="5">
+            <input v-model.number="specialityForm.avg_score" type="number" step="0.1" class="form-control" :class="{ invalid: specialityErrors.avg_score }" min="0" max="5" @input="specialityForm.avg_score = maskScore(specialityForm.avg_score)">
             <small v-if="specialityErrors.avg_score" class="field-error">{{ specialityErrors.avg_score }}</small>
           </div>
           
           <div class="form-group">
             <label>Описание специальности</label>
-            <textarea v-model="specialityForm.description" class="form-control" :class="{ invalid: specialityErrors.description }" rows="4" maxlength="3000"></textarea>
+            <textarea v-model="specialityForm.description" class="form-control" :class="{ invalid: specialityErrors.description }" rows="4" maxlength="3000" @input="specialityForm.description = normalizeMultilineInput(specialityForm.description, 3000)"></textarea>
             <small v-if="specialityErrors.description" class="field-error">{{ specialityErrors.description }}</small>
           </div>
           
@@ -625,41 +636,41 @@
             </div>
             <div class="form-group">
               <label>Название корпуса <span class="required">*</span></label>
-              <input v-model="addressForm.name" type="text" class="form-control" required placeholder="Например: Главный корпус">
+              <input v-model="addressForm.name" type="text" class="form-control" maxlength="255" @input="addressForm.name = normalizeTextInput(addressForm.name, 255)" required placeholder="Например: Главный корпус">
             </div>
           </div>
 
           <div class="form-group">
             <label>Полный адрес <span class="required">*</span></label>
-            <input v-model="addressForm.address" type="text" class="form-control" required placeholder="г. Уфа, ул. Борисоглебская, 32">
+            <input v-model="addressForm.address" type="text" class="form-control" maxlength="500" @input="addressForm.address = normalizeTextInput(addressForm.address, 500)" required placeholder="г. Уфа, ул. Борисоглебская, 32">
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label>Телефон</label>
-              <input v-model="addressForm.phone" type="text" class="form-control" placeholder="+7 (347) 123-45-67">
+              <input v-model="addressForm.phone" type="text" class="form-control" placeholder="+7 (347) 123-45-67" @input="addressForm.phone = maskRussianPhone(addressForm.phone)">
             </div>
             <div class="form-group">
               <label>Email</label>
-              <input v-model="addressForm.email" type="email" class="form-control" placeholder="info@college.ru">
+              <input v-model="addressForm.email" type="email" class="form-control" maxlength="255" placeholder="info@college.ru" @input="addressForm.email = normalizeEmailInput(addressForm.email)">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label>Координаты (широта, долгота)</label>
-              <input v-model="addressForm.coordinates" type="text" class="form-control" placeholder="54.7355, 55.9587">
+              <input v-model="addressForm.coordinates" type="text" class="form-control" maxlength="50" placeholder="54.7355, 55.9587" @input="addressForm.coordinates = normalizeCoordinatesInput(addressForm.coordinates)">
               <small class="form-hint">Формат: широта, долгота (можно получить из Яндекс.Карт)</small>
             </div>
             <div class="form-group">
               <label>Режим работы</label>
-              <input v-model="addressForm.working_hours" type="text" class="form-control" placeholder="Пн-Пт: 8:00-17:00">
+              <input v-model="addressForm.working_hours" type="text" class="form-control" maxlength="255" placeholder="Пн-Пт: 8:00-17:00" @input="addressForm.working_hours = normalizeTextInput(addressForm.working_hours, 255)">
             </div>
           </div>
 
           <div class="form-group">
             <label>Контактное лицо</label>
-            <input v-model="addressForm.contact_person" type="text" class="form-control" placeholder="ФИО ответственного лица">
+            <input v-model="addressForm.contact_person" type="text" class="form-control" maxlength="255" placeholder="ФИО ответственного лица" @input="addressForm.contact_person = normalizeTextInput(addressForm.contact_person, 255)">
           </div>
 
           <div class="form-group">
@@ -687,9 +698,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   firstError,
+  maskInteger,
   maskRussianPhone,
+  maskScore,
+  maskSpecialtyCode,
+  normalizeAddress,
   normalizeCollege,
+  normalizeCoordinatesInput,
+  normalizeEmailInput,
+  normalizeMultilineInput,
   normalizeSpecialty,
+  normalizeTextInput,
+  normalizeUrlInput,
+  validateAddress,
   validateCollege,
   validateSpecialty
 } from '../utils/validation'
@@ -761,29 +782,41 @@ const addressForm = ref({
 })
 
 // Вычисляемые свойства для списков
+const sanitizeLines = (value, maxLineLength = 255, maxItems = 50) => value
+  .split('\n')
+  .map((line) => normalizeTextInput(line, maxLineLength).trim())
+  .filter(Boolean)
+  .slice(0, maxItems)
+
+const sanitizeUrlLines = (value) => value
+  .split('\n')
+  .map((line) => normalizeUrlInput(line))
+  .filter(Boolean)
+  .slice(0, 20)
+
 const ovzText = computed({
   get: () => (collegeData.value.ovz_programs || []).join('\n'),
-  set: (v) => collegeData.value.ovz_programs = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.ovz_programs = sanitizeLines(v)
 })
 const opportunitiesText = computed({
   get: () => (collegeData.value.opportunities || []).join('\n'),
-  set: (v) => collegeData.value.opportunities = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.opportunities = sanitizeLines(v)
 })
 const employersText = computed({
   get: () => (collegeData.value.employers || []).join('\n'),
-  set: (v) => collegeData.value.employers = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.employers = sanitizeLines(v)
 })
 const masterClassesText = computed({
   get: () => (collegeData.value.workshops || []).join('\n'),
-  set: (v) => collegeData.value.workshops = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.workshops = sanitizeLines(v)
 })
 const professionsText = computed({
   get: () => (collegeData.value.professions || []).join('\n'),
-  set: (v) => collegeData.value.professions = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.professions = sanitizeLines(v)
 })
 const socialOtherText = computed({
   get: () => (collegeData.value.social_other || []).join('\n'),
-  set: (v) => collegeData.value.social_other = v.split('\n').filter(l => l.trim())
+  set: (v) => collegeData.value.social_other = sanitizeUrlLines(v)
 })
 
 const filteredSpecialities = computed(() => specialities.value)
@@ -1099,8 +1132,9 @@ const openAddressModal = (addr = null) => {
 const closeAddressModal = () => { showAddressModal.value = false }
 
 const saveAddress = async () => {
-  if (!addressForm.value.name?.trim()) return showAlert('Название корпуса обязательно', 'error')
-  if (!addressForm.value.address?.trim()) return showAlert('Адрес обязателен', 'error')
+  const addressErrors = validateAddress(addressForm.value)
+  if (Object.keys(addressErrors).length) return showAlert(firstError(addressErrors), 'error')
+  addressForm.value = normalizeAddress(addressForm.value)
 
   saving.value = true
   try {

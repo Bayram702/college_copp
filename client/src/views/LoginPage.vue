@@ -25,6 +25,9 @@
               id="username" 
               class="form-input" 
               placeholder="Введите логин" 
+              maxlength="50"
+              autocomplete="username"
+              @input="form.username = maskLogin(form.username)"
               required
               :disabled="loading"
             >
@@ -39,6 +42,8 @@
                 id="password" 
                 class="form-input" 
                 placeholder="Введите пароль" 
+                maxlength="100"
+                autocomplete="current-password"
                 required
                 :disabled="loading"
               >
@@ -74,6 +79,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
+import { maskLogin } from '../utils/validation'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()

@@ -4,6 +4,7 @@ const router = express.Router()
 const db = require('../db')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { publicError } = require('../middleware/security')
+const { validateAddressPayload, validationResponse } = require('../validation')
 
 const requireCollegeRep = [requireAuth, requireRole('college_rep', 'admin')]
 
@@ -24,7 +25,9 @@ router.get('/', requireCollegeRep, async (req, res) => {
 // Создать адрес
 router.post('/', requireCollegeRep, async (req, res) => {
   try {
-    const { name, address, phone, email, coordinates, is_main, address_type, working_hours, contact_person } = req.body
+    const { data, errors } = validateAddressPayload(req.body)
+    if (Object.keys(errors).length) return validationResponse(res, errors)
+    const { name, address, phone, email, coordinates, is_main, address_type, working_hours, contact_person } = data
     const result = await db.query(
       `INSERT INTO college_addresses (college_id, name, address, phone, email, coordinates, is_main, address_type, working_hours, contact_person)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
@@ -41,7 +44,9 @@ router.post('/', requireCollegeRep, async (req, res) => {
 router.put('/:id', requireCollegeRep, async (req, res) => {
   try {
     const { id } = req.params
-    const { name, address, phone, email, coordinates, is_main, address_type, working_hours, contact_person } = req.body
+    const { data, errors } = validateAddressPayload(req.body)
+    if (Object.keys(errors).length) return validationResponse(res, errors)
+    const { name, address, phone, email, coordinates, is_main, address_type, working_hours, contact_person } = data
     const result = await db.query(
       `UPDATE college_addresses SET name=$1, address=$2, phone=$3, email=$4, coordinates=$5, is_main=$6,
        address_type=$7, working_hours=$8, contact_person=$9

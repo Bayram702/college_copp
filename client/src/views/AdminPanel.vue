@@ -230,19 +230,19 @@
           <div class="form-row">
             <div class="form-group">
               <label>Имя <span class="required">*</span></label>
-              <input v-model="userForm.name" type="text" class="form-control" :class="{ invalid: userErrors.name }" maxlength="255" required>
+              <input v-model="userForm.name" type="text" class="form-control" :class="{ invalid: userErrors.name }" maxlength="255" @input="userForm.name = normalizeTextInput(userForm.name, 255)" required>
               <small v-if="userErrors.name" class="field-error">{{ userErrors.name }}</small>
             </div>
             <div class="form-group">
               <label>Логин <span class="required">*</span></label>
-              <input v-model="userForm.login" type="text" class="form-control" :class="{ invalid: userErrors.login }" maxlength="50" required>
+              <input v-model="userForm.login" type="text" class="form-control" :class="{ invalid: userErrors.login }" maxlength="50" @input="userForm.login = maskLogin(userForm.login)" required>
               <small v-if="userErrors.login" class="field-error">{{ userErrors.login }}</small>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Email <span class="required">*</span></label>
-              <input v-model="userForm.email" type="email" class="form-control" :class="{ invalid: userErrors.email }" maxlength="255" required>
+              <input v-model="userForm.email" type="email" class="form-control" :class="{ invalid: userErrors.email }" maxlength="255" @input="userForm.email = normalizeEmailInput(userForm.email)" required>
               <small v-if="userErrors.email" class="field-error">{{ userErrors.email }}</small>
               <small v-if="!editingUser" class="form-hint">📧 На этот email будут отправлены логин и пароль для входа</small>
             </div>
@@ -291,7 +291,15 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { firstError, maskRussianPhone, normalizeRepresentative, validateRepresentative } from '../utils/validation'
+import {
+  firstError,
+  maskLogin,
+  maskRussianPhone,
+  normalizeEmailInput,
+  normalizeRepresentative,
+  normalizeTextInput,
+  validateRepresentative
+} from '../utils/validation'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()

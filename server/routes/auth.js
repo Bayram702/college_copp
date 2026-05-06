@@ -41,10 +41,15 @@ const signToken = (user) => jwt.sign(
 
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const username = String(req.body.username || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 50);
+    const { password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'Введите логин и пароль' });
+    }
+
+    if (username.length < 3 || typeof password !== 'string' || password.length > 100) {
+      return res.status(400).json({ success: false, error: 'Проверьте логин и пароль' });
     }
 
     const result = await db.query(`
