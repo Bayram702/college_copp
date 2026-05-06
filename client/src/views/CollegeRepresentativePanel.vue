@@ -321,7 +321,7 @@
               </p>
             </div>
             <div v-if="collegeData.logo_image_url" class="image-preview">
-              <img :src="`${API_URL.replace('/api', '')}${collegeData.logo_image_url}`" alt="Логотип">
+              <img :src="resolveImageUrl(collegeData.logo_image_url)" alt="Логотип">
               <button class="remove-image-btn" @click="collegeData.logo_image_url = ''" title="Удалить изображение">
                 <i class="fas fa-times"></i>
               </button>
@@ -693,6 +693,7 @@ import {
   validateCollege,
   validateSpecialty
 } from '../utils/validation'
+import { resolveImageUrl } from '../utils/images'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()

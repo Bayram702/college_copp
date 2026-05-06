@@ -66,6 +66,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { resolveImageUrl } from '../utils/images'
 
 const infoItems = ref([
   {
@@ -105,7 +106,7 @@ const loadProfessionalitetColleges = async () => {
       colleges.value = result.data.map(c => ({
         id: c.id,
         name: c.name,
-        image: c.logo_image_url || '/college_stub.svg',
+        image: resolveImageUrl(c.logo_image_url),
         cluster: c.professionalitet_cluster || 'Не указан',
         partners: 0, // Пока нет в БД, можно добавить позже
         year: new Date(c.created_at).getFullYear() || 2023,

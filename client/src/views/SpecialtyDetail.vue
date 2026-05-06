@@ -214,6 +214,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import { resolveImageUrl } from '../utils/images'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const route = useRoute()
@@ -241,7 +242,7 @@ const fetchSpecialty = async () => {
         data.colleges = data.colleges.map(c => ({
           id: c.id,
           name: c.name,
-          image: c.logo_image_url || '/college_stub.svg',
+          image: resolveImageUrl(c.logo_image_url),
           studyDuration: data.duration || '—',
           studyForm: data.form === 'full-time' ? 'Очная' : data.form === 'part-time' ? 'Заочная' : 'Дистанционная',
           admissionBase: data.base_education === '9' ? '9 классов' : '11 классов',

@@ -108,7 +108,7 @@
             :class="{ professionalitet: college.is_professionalitet }"
           >
             <div class="college-header">
-              <img :src="college.logo_image_url || '/college_stub.svg'" :alt="college.name" class="college-image">
+              <img :src="resolveImageUrl(college.logo_image_url)" :alt="college.name" class="college-image">
               <div v-if="college.is_professionalitet" class="professionalitet-badge">
                 <i class="fas fa-check-circle"></i> Профессионалитет
               </div>
@@ -186,6 +186,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import axios from 'axios'
 import { Splide, SplideSlide } from '@splidejs/vue-splide'
 import '@splidejs/vue-splide/css'
+import { resolveImageUrl } from '../utils/images'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
