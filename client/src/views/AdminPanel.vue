@@ -642,4 +642,106 @@ const logout = () => {
 .btn-secondary:hover { background: #e2e8f0; }
 .required { color: #dc2626; }
 .form-hint { color: #94a3b8; font-size: 0.8rem; margin-top: 4px; display: block; }
+
+@media (max-width: 768px) {
+  .admin-panel .container {
+    width: 100%;
+    padding: 0 12px;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    padding: 12px 0 0;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 8px 8px 0 0;
+    white-space: nowrap;
+  }
+
+  .tab-content {
+    padding: 18px 0;
+  }
+
+  .specialities-header,
+  .filters-bar,
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box,
+  .btn-add,
+  .filter-select,
+  .btn,
+  .btn-retry {
+    width: 100%;
+    max-width: none;
+  }
+
+  .btn-add,
+  .btn,
+  .btn-retry {
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .table-container {
+    border-radius: 8px;
+  }
+
+  .users-table-container .table-scroll,
+  .table-scroll {
+    max-height: 70vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    min-width: 820px;
+    font-size: 0.88rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+
+  .page-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: none;
+    padding: 22px 16px;
+    border-radius: 10px;
+  }
+
+  .modal h2 {
+    font-size: 1.35rem;
+    padding-right: 34px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
 </style>

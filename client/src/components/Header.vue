@@ -15,7 +15,10 @@
             <div class="logo-icon">РБ</div>
             <div class="logo-text">Колледжи<span>Башкортостана</span></div>
           </router-link>
-          <nav class="nav-menu">
+          <button class="mobile-menu-btn" type="button" :aria-expanded="isMobileMenuOpen" aria-label="Открыть меню" @click="isMobileMenuOpen = !isMobileMenuOpen">
+            <i :class="isMobileMenuOpen ? 'fas fa-times' : 'fas fa-bars'"></i>
+          </button>
+          <nav class="nav-menu" :class="{ open: isMobileMenuOpen }" @click="isMobileMenuOpen = false">
             <!-- Навигация только для неавторизованных -->
             <template v-if="!currentUser">
               <router-link to="/" active-class="active">Главная</router-link>
@@ -57,6 +60,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const currentUser = ref(null)
+const isMobileMenuOpen = ref(false)
 
 const userDashboardLink = computed(() => {
   if (!currentUser.value) return '/'
@@ -100,6 +104,7 @@ const logout = () => {
   localStorage.removeItem('authToken')
   localStorage.removeItem('user')
   currentUser.value = null
+  isMobileMenuOpen.value = false
   router.push('/login')
 }
 </script>

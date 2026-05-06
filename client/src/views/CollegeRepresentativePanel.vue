@@ -1369,4 +1369,148 @@ onMounted(() => { loadCollegeData() })
   color: #94a3b8;
   margin-top: 5px;
 }
+
+@media (max-width: 768px) {
+  .college-rep-panel .container {
+    width: 100%;
+    padding: 0 12px;
+  }
+
+  .panel-header {
+    padding: 14px 0;
+    margin-bottom: 16px;
+  }
+
+  .panel-header .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .panel-header .logo {
+    align-items: flex-start;
+  }
+
+  .logo-text h1 {
+    font-size: 1.15rem;
+    line-height: 1.25;
+  }
+
+  .panel-header .logout-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: 16px;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    min-width: 150px;
+    min-height: 44px;
+    padding: 10px 14px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .tab-content {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .section {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: 1.15rem;
+    line-height: 1.25;
+  }
+
+  .settings-grid,
+  .stats-grid,
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .specialities-header,
+  .filters-bar,
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box,
+  .btn-add,
+  .btn,
+  .filter-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .btn-add,
+  .btn {
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .addresses-table-wrapper,
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    min-width: 780px;
+    font-size: 0.88rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px;
+  }
+
+  .action-buttons {
+    flex-direction: row;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: none;
+    padding: 22px 16px;
+    border-radius: 10px;
+  }
+
+  .modal h2 {
+    font-size: 1.35rem;
+    padding-right: 34px;
+  }
+
+  .image-upload {
+    padding: 22px 12px;
+  }
+
+  .image-preview {
+    display: block;
+  }
+
+  .image-preview img {
+    width: 100%;
+    max-width: none;
+    max-height: 240px;
+    object-fit: contain;
+  }
+}
 </style>

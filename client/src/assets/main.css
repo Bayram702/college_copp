@@ -3076,3 +3076,377 @@ header {
   position: relative;
   z-index: 2001; /* Выше overlay */
 }
+
+/* === Мобильная версия сайта === */
+.mobile-menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: white;
+  color: var(--primary-blue);
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    padding: 0 16px;
+  }
+
+  .header-top {
+    display: none;
+  }
+
+  .header-main {
+    padding: 10px 0;
+  }
+
+  header .header-content {
+    flex-direction: row;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .logo {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+
+  .logo-text {
+    font-size: 1.05rem;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 58px;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    align-items: stretch;
+    background: white;
+    padding: 8px 16px 18px;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+    z-index: 1200;
+  }
+
+  .nav-menu.open {
+    display: flex;
+  }
+
+  .nav-menu a,
+  .login-btn,
+  .user-panel-btn,
+  .logout-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    border-radius: 8px;
+    margin: 4px 0;
+    padding: 12px 14px;
+  }
+
+  .nav-menu a.active::after {
+    display: none;
+  }
+
+  .user-menu {
+    width: 100%;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .hero,
+  .specialties-cta-section,
+  .professionalitet-section,
+  .cta-section,
+  .stats-section {
+    padding: 34px 0;
+  }
+
+  .hero h1,
+  .college-header h1,
+  .specialty-header h1,
+  .cta-section h2 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .hero p,
+  .section-title p,
+  .cta-section p {
+    font-size: 0.98rem;
+  }
+
+  .section {
+    padding: 26px 0;
+  }
+
+  .section-title {
+    margin-bottom: 18px;
+  }
+
+  .section-title h2 {
+    font-size: 1.55rem;
+    line-height: 1.25;
+  }
+
+  .breadcrumbs {
+    font-size: 0.86rem;
+    padding: 10px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .catalog-filters,
+  .filters-section {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .filter-header {
+    align-items: stretch;
+  }
+
+  .clear-filter-btn,
+  .search-button,
+  .filter-select,
+  .search-input {
+    min-height: 44px;
+  }
+
+  .catalog-search {
+    flex-direction: column;
+  }
+
+  .search-input {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .search-button {
+    border-radius: 0 0 8px 8px;
+    padding: 12px;
+  }
+
+  .filters-row,
+  .filter-group {
+    width: 100%;
+  }
+
+  .sector-filter-card {
+    width: 176px;
+    min-height: 96px;
+    padding: 12px;
+  }
+
+  .sector-icon {
+    font-size: 1.35rem;
+  }
+
+  .sector-name {
+    font-size: 0.86rem;
+  }
+
+  .sectors-grid,
+  .specialties-grid,
+  .colleges-grid,
+  .professionalitet-colleges,
+  .profession-cards,
+  .info-grid,
+  .sources-grid,
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .college-card,
+  .specialty-card,
+  .sector-card,
+  .profession-card,
+  .info-card,
+  .source-card {
+    border-radius: 8px;
+  }
+
+  .college-card:hover,
+  .specialty-card:hover,
+  .sector-card:hover,
+  .profession-card:hover,
+  .source-card:hover {
+    transform: none;
+  }
+
+  .college-content,
+  .specialty-content,
+  .sector-content,
+  .info-card-content {
+    padding: 18px;
+  }
+
+  .college-title,
+  .specialty-name {
+    font-size: 1.08rem;
+    line-height: 1.35;
+  }
+
+  .college-description,
+  .specialty-description {
+    font-size: 0.92rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .college-image,
+  .sector-image,
+  .college-image-prof {
+    height: 160px;
+  }
+
+  .professionalitet-badge {
+    top: 10px;
+    right: 10px;
+    max-width: calc(100% - 20px);
+    white-space: normal;
+  }
+
+  .admission-stats .stats-grid,
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 18px 12px;
+  }
+
+  .stat-card-value {
+    font-size: 1.8rem;
+  }
+
+  .pagination {
+    margin-top: 28px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .table-container,
+  .specialties-table,
+  .specialty-info-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .specialties-table,
+  .specialty-info-table {
+    min-width: 720px;
+  }
+
+  .photo-carousel {
+    margin: 28px 0;
+    border-radius: 8px;
+  }
+
+  .carousel-container {
+    height: 260px;
+  }
+
+  .carousel-caption {
+    padding: 16px 48px 18px;
+  }
+
+  .carousel-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .map-container,
+  #college-map {
+    height: 320px;
+  }
+
+  footer {
+    padding: 34px 0 22px;
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  .logo-text {
+    font-size: 0.95rem;
+  }
+
+  .hero h1,
+  .college-header h1,
+  .specialty-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .section-title h2 {
+    font-size: 1.35rem;
+  }
+
+  .catalog-filters {
+    padding: 12px;
+  }
+
+  .admission-stats .stats-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .average-score-container,
+  .college-details,
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .btn-details,
+  .specialty-details-btn,
+  .btn-small,
+  .search-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .back-to-top {
+    width: 42px;
+    height: 42px;
+    right: 14px;
+    bottom: 14px;
+  }
+}
