@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Заглушка колледжа</title>
+  <desc id="desc">Иллюстрация-заглушка для колледжа без фотографии</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f3f7fb" />
+      <stop offset="100%" stop-color="#dfeaf6" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0054A6" />
+      <stop offset="100%" stop-color="#00AF4F" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)" />
+  <rect x="120" y="100" width="960" height="600" rx="36" fill="#ffffff" stroke="#d0dceb" stroke-width="4" />
+  <rect x="120" y="100" width="960" height="110" rx="36" fill="url(#accent)" />
+  <rect x="120" y="174" width="960" height="36" fill="url(#accent)" />
+  <g fill="#0054A6" opacity="0.14">
+    <circle cx="250" cy="270" r="56" />
+    <circle cx="960" cy="610" r="72" />
+    <circle cx="1010" cy="250" r="32" />
+  </g>
+  <g transform="translate(360 250)">
+    <rect x="0" y="120" width="480" height="210" rx="16" fill="#edf4fb" stroke="#c6d7ea" stroke-width="6" />
+    <rect x="40" y="10" width="400" height="130" rx="18" fill="#ffffff" stroke="#c6d7ea" stroke-width="6" />
+    <path d="M40 120 L240 0 L440 120" fill="#0054A6" opacity="0.1" />
+    <path d="M-10 120 L240 -20 L490 120" fill="none" stroke="#0054A6" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="78" y="160" width="72" height="72" rx="8" fill="#ffffff" stroke="#b8cde3" stroke-width="5" />
+    <rect x="204" y="160" width="72" height="72" rx="8" fill="#ffffff" stroke="#b8cde3" stroke-width="5" />
+    <rect x="330" y="160" width="72" height="72" rx="8" fill="#ffffff" stroke="#b8cde3" stroke-width="5" />
+    <rect x="210" y="230" width="60" height="100" rx="10" fill="#dce9f7" stroke="#b8cde3" stroke-width="5" />
+  </g>
+  <text x="600" y="610" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="#24415f">
+    Фото колледжа отсутствует
+  </text>
+</svg>
