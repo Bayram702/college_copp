@@ -54,7 +54,8 @@ const routes = [
     component: () => import('../views/CollegeRepresentativePanel.vue'),
     meta: { 
       requiresAuth: true, 
-      allowedRoles: ['college_rep', 'admin'] 
+      allowedRoles: ['college_rep'],
+      requiresCollege: true
     }
   },
   {
@@ -100,8 +101,16 @@ const verifySession = async (token) => {
   axios.defaults.headers.common.Authorization = `Bearer ${token}`
   const response = await axios.get(`${API_URL}/auth/me`)
   const user = response.data?.data?.user
+  if (!user) throw new Error('Пользователь не найден')
   localStorage.setItem('user', JSON.stringify(user))
   return user
+}
+
+const getDashboardRoute = (user) => {
+  const role = user?.role?.name
+  if (role === 'admin') return { name: 'AdminPanel' }
+  if (role === 'college_rep' && user?.collegeId) return { name: 'CollegeRepresentative' }
+  return { name: 'Home' }
 }
 
 // Глобальный guard для проверки авторизации
@@ -133,7 +142,13 @@ router.beforeEach(async (to, from, next) => {
     // Проверяем роль
     if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(user?.role?.name)) {
       // Недостаточно прав
-      console.warn('⚠️ Недостаточно прав:', user.role.name, 'нужно:', to.meta.allowedRoles)
+      console.warn('⚠️ Недостаточно прав:', user?.role?.name, 'нужно:', to.meta.allowedRoles)
+      next(getDashboardRoute(user))
+      return
+    }
+
+    if (to.meta.requiresCollege && !user?.collegeId) {
+      console.warn('⚠️ Представитель колледжа не привязан к колледжу')
       next({ name: 'Home' })
       return
     }
@@ -144,18 +159,15 @@ router.beforeEach(async (to, from, next) => {
 
   // Если маршрут только для гостей (уже авторизованным не нужен вход)
   if (to.meta.guestOnly) {
-    if (token && user) {
-      // Уже авторизован - перенаправляем в зависимости от роли
-      switch (user.role.name) {
-        case 'admin':
-          next('/admin')
-          break
-        case 'college_rep':
-          next('/college-representative')
-          break
-        default:
-          next('/')
+    if (token) {
+      try {
+        user = await verifySession(token)
+      } catch (e) {
+        clearAuth()
+        next()
+        return
       }
+      next(getDashboardRoute(user))
       return
     }
   }

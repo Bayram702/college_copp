@@ -657,6 +657,8 @@ const saveUser = async () => {
   try {
     const token = localStorage.getItem('authToken')
     const body = normalizeRepresentative(userForm.value)
+    const wasEditing = !!editingUser.value
+    const passwordWasChanged = !!body.password
     let response
     if (editingUser.value) {
       response = await axios.put(`${API_URL}/users/${editingUser.value.id}`, body, { headers: { Authorization: `Bearer ${token}` } })
@@ -667,7 +669,13 @@ const saveUser = async () => {
     fetchUsers()
 
     // Показываем результат отправки email
-    if (response.data.email_sent) {
+    if (wasEditing && passwordWasChanged && response.data.password_email_sent) {
+      alertMessage.value = `Пароль изменён. Email с новым паролем отправлен на ${body.email}`
+      alertType.value = 'success'
+    } else if (wasEditing && passwordWasChanged) {
+      alertMessage.value = `Пароль изменён. ${response.data.password_email_error || 'Email с новым паролем не отправлен'}`
+      alertType.value = 'info'
+    } else if (response.data.email_sent) {
       alertMessage.value = `Пользователь создан. Email с логином и паролем отправлен на ${userForm.value.email}`
       alertType.value = 'success'
     } else if (response.data.credentials) {

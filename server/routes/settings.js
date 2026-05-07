@@ -2,7 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { requireAuth, requireRole } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
+
+const requireAdmin = [requireAuth, requireRole('admin')];
 
 // Получить все настройки сайта (публичный endpoint)
 router.get('/', async (req, res) => {
@@ -68,7 +71,7 @@ router.get('/:key', async (req, res) => {
 });
 
 // Обновить настройку (admin)
-router.put('/:key', async (req, res) => {
+router.put('/:key', requireAdmin, async (req, res) => {
   try {
     const { key } = req.params;
     const { value, description } = req.body;
@@ -81,7 +84,7 @@ router.put('/:key', async (req, res) => {
     const checkQuery = `SELECT id, setting_type FROM site_settings WHERE setting_key = $1`;
     const checkResult = await db.query(checkQuery, [key]);
 
-    const settingValue = typeof value === 'object' ? JSON.stringify(value) : value;
+    const settingValue = JSON.stringify(value);
     const settingType = typeof value === 'object' ? 'json' : 'string';
 
     if (checkResult.rows.length > 0) {

@@ -8,11 +8,47 @@ const { getBearerToken, verifyToken } = require('../middleware/auth');
 const { createRateLimiter, publicError } = require('../middleware/security');
 
 const ALLOWED_ROLES = ['admin', 'college_rep'];
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCK_MS = 3 * 60 * 1000;
+const failedLoginAttempts = new Map();
 const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Слишком много попыток входа. Попробуйте позже.'
 });
+
+const getLoginAttemptKey = (req, username) => `${req.ip || 'unknown'}:${String(username || '').toLowerCase()}`;
+
+const getLoginLock = (key) => {
+  const attempt = failedLoginAttempts.get(key);
+  if (!attempt?.lockedUntil) return null;
+  if (attempt.lockedUntil <= Date.now()) {
+    failedLoginAttempts.delete(key);
+    return null;
+  }
+  return attempt;
+};
+
+const registerFailedLogin = (key) => {
+  const now = Date.now();
+  const current = failedLoginAttempts.get(key) || { count: 0, lockedUntil: 0 };
+  const count = current.count + 1;
+  const lockedUntil = count >= MAX_FAILED_LOGIN_ATTEMPTS ? now + LOGIN_LOCK_MS : 0;
+  failedLoginAttempts.set(key, { count, lockedUntil });
+  return { count, lockedUntil };
+};
+
+const clearFailedLogin = (key) => failedLoginAttempts.delete(key);
+
+const sendLoginLockedResponse = (res, lockedUntil) => {
+  const retryAfter = Math.max(Math.ceil((lockedUntil - Date.now()) / 1000), 1);
+  res.setHeader('Retry-After', retryAfter);
+  return res.status(429).json({
+    success: false,
+    error: 'Слишком много неверных попыток. Вход заблокирован на 3 минуты.',
+    retryAfter
+  });
+};
 
 const buildUserPayload = (user) => ({
   id: user.id,
@@ -43,6 +79,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   try {
     const username = String(req.body.username || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 50);
     const { password } = req.body;
+    const attemptKey = getLoginAttemptKey(req, username);
 
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'Введите логин и пароль' });
@@ -50,6 +87,11 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     if (username.length < 3 || typeof password !== 'string' || password.length > 100) {
       return res.status(400).json({ success: false, error: 'Проверьте логин и пароль' });
+    }
+
+    const activeLock = getLoginLock(attemptKey);
+    if (activeLock) {
+      return sendLoginLockedResponse(res, activeLock.lockedUntil);
     }
 
     const result = await db.query(`
@@ -70,6 +112,10 @@ router.post('/login', loginLimiter, async (req, res) => {
     `, [username]);
 
     if (result.rows.length === 0) {
+      const failed = registerFailedLogin(attemptKey);
+      if (failed.lockedUntil) {
+        return sendLoginLockedResponse(res, failed.lockedUntil);
+      }
       return res.status(401).json({ success: false, error: 'Неверный логин или пароль' });
     }
 
@@ -85,9 +131,14 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
+      const failed = registerFailedLogin(attemptKey);
+      if (failed.lockedUntil) {
+        return sendLoginLockedResponse(res, failed.lockedUntil);
+      }
       return res.status(401).json({ success: false, error: 'Неверный логин или пароль' });
     }
 
+    clearFailedLogin(attemptKey);
     await db.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     res.json({

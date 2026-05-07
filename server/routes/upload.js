@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/upload');
 const db = require('../db');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, requireCollegeBinding } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
 
-const requireCollegeAccess = [requireAuth, requireRole('college_rep', 'admin')];
+const requireCollegeAccess = [requireAuth, requireRole('college_rep'), requireCollegeBinding];
 const requireAdmin = [requireAuth, requireRole('admin')];
 
 // Загрузка изображения для колледжа

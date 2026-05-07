@@ -3,11 +3,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db'); // Ваш pool подключений к БД
 const { validateCollegePayload, validationResponse } = require('../validation');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, requireCollegeBinding } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
 
 const requireAdmin = [requireAuth, requireRole('admin')];
-const requireCollegeAccess = [requireAuth, requireRole('college_rep', 'admin')];
+const requireCollegeAccess = [requireAuth, requireRole('college_rep'), requireCollegeBinding];
 
 // Получить все колледжи с фильтрацией (публичный endpoint)
 router.get('/', async (req, res) => {

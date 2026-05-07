@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
+const { sendPasswordChangedEmail } = require('../mail');
 const { validateRepresentativePayload, validationResponse } = require('../validation');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
@@ -389,7 +390,24 @@ router.put('/:id', requireAdmin, async (req, res) => {
       console.error('Error writing user audit log:', auditError)
     }
     
-    res.json({ success: true, data: result.rows[0] });
+    let passwordEmailResult = null;
+    if (password) {
+      try {
+        passwordEmailResult = await sendPasswordChangedEmail(email, name, login, password);
+      } catch (mailError) {
+        console.error('Error sending changed password email:', mailError);
+        passwordEmailResult = { success: false, error: mailError.message };
+      }
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      password_email_sent: password ? !!passwordEmailResult?.success : undefined,
+      password_email_error: password && !passwordEmailResult?.success
+        ? (passwordEmailResult?.error || passwordEmailResult?.reason || 'Email не отправлен')
+        : null
+    });
     
   } catch (error) {
     console.error('Error updating user:', error);

@@ -3,10 +3,10 @@ const express = require('express')
 const router = express.Router()
 const db = require('../db')
 const { validateSpecialtyPayload, validationResponse } = require('../validation')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, requireCollegeBinding } = require('../middleware/auth')
 const { publicError } = require('../middleware/security')
 
-const requireCollegeRep = [requireAuth, requireRole('college_rep', 'admin')]
+const requireCollegeRep = [requireAuth, requireRole('college_rep'), requireCollegeBinding]
 
 // Получить специальности колледжа представителя
 router.get('/', requireCollegeRep, async (req, res) => {

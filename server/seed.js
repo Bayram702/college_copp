@@ -135,7 +135,11 @@ const seed = async () => {
       adminId = adminExisting.rows[0].id;
       console.log(`  ⏭️ admin (уже существует, id=${adminId})`);
     } else {
-      const passwordHash = await bcrypt.hash('admin123', 10);
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+      if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_PASSWORD || adminPassword.length < 12)) {
+        throw new Error('ADMIN_PASSWORD must be set to a strong value before seeding production');
+      }
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
       const adminResult = await client.query(
         `INSERT INTO users (login, email, password_hash, name, role_id, status)
          VALUES ($1, $2, $3, $4, $5, 'active')
@@ -143,7 +147,7 @@ const seed = async () => {
         ['admin', 'admin@college-rb.ru', passwordHash, 'Администратор', roleIds['admin']]
       );
       adminId = adminResult.rows[0].id;
-      console.log(`  ✅ admin (id=${adminId}, пароль: admin123)`);
+      console.log(`  ✅ admin (id=${adminId}, пароль: ${process.env.ADMIN_PASSWORD ? 'из ADMIN_PASSWORD' : 'admin123 (только для разработки)'})`);
     }
 
     // ==========================================

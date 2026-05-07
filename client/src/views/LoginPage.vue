@@ -29,7 +29,7 @@
               autocomplete="username"
               @input="form.username = maskLogin(form.username)"
               required
-              :disabled="loading"
+              :disabled="loading || isLoginLocked"
             >
           </div>
           
@@ -45,7 +45,7 @@
                 maxlength="100"
                 autocomplete="current-password"
                 required
-                :disabled="loading"
+                :disabled="loading || isLoginLocked"
               >
               <button type="button" class="toggle-password" @click="showPassword = !showPassword">
                 <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
@@ -57,9 +57,12 @@
             <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
           </div>
           
-          <button type="submit" class="submit-btn" :disabled="loading">
+          <button type="submit" class="submit-btn" :disabled="loading || isLoginLocked">
             <span v-if="loading">
               <i class="fas fa-spinner fa-spin"></i> Вход...
+            </span>
+            <span v-else-if="isLoginLocked">
+              <i class="fas fa-lock"></i> Попробуйте через {{ lockSeconds }} с
             </span>
             <span v-else>
               <i class="fas fa-sign-in-alt"></i> Войти
@@ -76,7 +79,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, onUnmounted, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { maskLogin } from '../utils/validation'
@@ -93,8 +96,39 @@ const form = reactive({
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const lockUntil = ref(0)
+const lockSeconds = ref(0)
+let lockTimer = null
+
+const isLoginLocked = computed(() => lockSeconds.value > 0)
+
+const clearLockTimer = () => {
+  if (lockTimer) {
+    clearInterval(lockTimer)
+    lockTimer = null
+  }
+}
+
+const startLoginLock = (seconds) => {
+  const duration = Math.max(Number(seconds) || 180, 1)
+  lockUntil.value = Date.now() + duration * 1000
+
+  const tick = () => {
+    lockSeconds.value = Math.max(Math.ceil((lockUntil.value - Date.now()) / 1000), 0)
+    if (lockSeconds.value === 0) {
+      clearLockTimer()
+    }
+  }
+
+  clearLockTimer()
+  tick()
+  lockTimer = setInterval(tick, 1000)
+}
+
+onUnmounted(clearLockTimer)
 
 const handleLogin = async () => {
+  if (isLoginLocked.value) return
   errorMessage.value = ''
   loading.value = true
 
@@ -129,7 +163,11 @@ const handleLogin = async () => {
   } catch (error) {
     console.error('Login error:', error)
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers?.['retry-after'] || error.response.data?.retryAfter || 180
+      startLoginLock(retryAfter)
+      errorMessage.value = error.response.data?.error || 'Слишком много неверных попыток. Попробуйте через 3 минуты.'
+    } else if (error.response?.status === 401) {
       errorMessage.value = error.response.data.error || 'Неверный логин или пароль'
     } else if (error.request) {
       errorMessage.value = 'Нет соединения с сервером'

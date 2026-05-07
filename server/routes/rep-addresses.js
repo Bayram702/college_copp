@@ -2,11 +2,11 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../db')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, requireCollegeBinding } = require('../middleware/auth')
 const { publicError } = require('../middleware/security')
 const { validateAddressPayload, validationResponse } = require('../validation')
 
-const requireCollegeRep = [requireAuth, requireRole('college_rep', 'admin')]
+const requireCollegeRep = [requireAuth, requireRole('college_rep'), requireCollegeBinding]
 
 // Получить адреса колледжа представителя
 router.get('/', requireCollegeRep, async (req, res) => {

@@ -31,6 +31,14 @@ const isConfigured = () => {
   return !!(config.host && config.from && config.user && config.pass)
 }
 
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]))
+
 // Отправка email с данными для входа
 const sendCredentialsEmail = async (toEmail, name, login, password) => {
   if (!isConfigured()) {
@@ -85,6 +93,55 @@ const sendCredentialsEmail = async (toEmail, name, login, password) => {
   }
 }
 
+const sendPasswordChangedEmail = async (toEmail, name, login, password) => {
+  if (!isConfigured()) {
+    console.log('SMTP не настроен. Новый пароль пользователя:')
+    console.log(`  Имя: ${name}`)
+    console.log(`  Email: ${toEmail}`)
+    console.log(`  Логин: ${login}`)
+    console.log('  Пароль: не выводится в логах')
+    return { success: false, reason: 'SMTP not configured' }
+  }
+
+  try {
+    const config = getSmtpConfig()
+    const transporter = createTransporter()
+    const safeName = escapeHtml(name)
+    const safeLogin = escapeHtml(login)
+    const safePassword = escapeHtml(password)
+
+    const info = await transporter.sendMail({
+      from: `"Портал колледжей Башкортостана" <${config.from}>`,
+      to: toEmail,
+      subject: 'Пароль учетной записи изменен',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #0054A6;">Здравствуйте, ${safeName}!</h2>
+          <p>Администратор изменил пароль вашей учетной записи на портале колледжей Республики Башкортостан.</p>
+          <div style="background: #f5f7fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1e293b;">Данные для входа:</h3>
+            <p><strong>Логин:</strong> <code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px;">${safeLogin}</code></p>
+            <p><strong>Новый пароль:</strong> <code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px;">${safePassword}</code></p>
+          </div>
+          <p>Если вы не ожидали смену пароля, свяжитесь с администратором портала.</p>
+          <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 20px 0;">
+          <p style="color: #94a3b8; font-size: 0.85rem;">Это письмо отправлено автоматически. Пожалуйста, не отвечайте на него.</p>
+        </div>
+      `
+    })
+
+    console.log(`Email о смене пароля отправлен на ${toEmail}, messageId: ${info.messageId}`)
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    console.error('Ошибка отправки email о смене пароля:', error)
+    return {
+      success: false,
+      error: error.response || error.message,
+      code: error.code || null
+    }
+  }
+}
+
 const sendPasswordResetCodeEmail = async (toEmail, name, code) => {
   if (!isConfigured()) {
     console.log('⚠️ SMTP не настроен. Код смены пароля:')
@@ -127,4 +184,4 @@ const sendPasswordResetCodeEmail = async (toEmail, name, code) => {
   }
 }
 
-module.exports = { sendCredentialsEmail, sendPasswordResetCodeEmail, isConfigured }
+module.exports = { sendCredentialsEmail, sendPasswordChangedEmail, sendPasswordResetCodeEmail, isConfigured }
