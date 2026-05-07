@@ -32,7 +32,7 @@
                 type="button"
                 @click="selectSector(sector.id)"
               >
-                <span class="sector-icon"><i :class="sector.icon"></i></span>
+                <span v-if="sector.id === 'all'" class="sector-icon"><i :class="sector.icon"></i></span>
                 <span class="sector-name">{{ sector.name }}</span>
                 <span v-if="sector.code" class="sector-code">{{ sector.code }}</span>
               </button>
@@ -154,20 +154,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const route = useRoute()
 const router = useRouter()
 
-const SECTOR_ICONS = {
-  '08': 'fas fa-cogs',
-  '09': 'fas fa-laptop-code',
-  '07': 'fas fa-building',
-  '31': 'fas fa-stethoscope',
-  '38': 'fas fa-chart-line',
-  '44': 'fas fa-chalkboard-teacher',
-  '43': 'fas fa-utensils',
-  '35': 'fas fa-seedling',
-  '13': 'fas fa-bolt',
-  '15': 'fas fa-industry',
-  default: 'fas fa-folder'
-}
-
 const splideOptions = {
   type: 'slide',
   rewind: false,
@@ -205,7 +191,6 @@ const loadSectors = async () => {
         ...result.data.map(sector => ({
           id: String(sector.id),
           name: sector.name,
-          icon: SECTOR_ICONS[sector.code?.substring(0, 2)] || SECTOR_ICONS.default,
           code: sector.code
         }))
       ]

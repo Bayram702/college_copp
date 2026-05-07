@@ -47,7 +47,7 @@ const loadSectors = async () => {
     const response = await fetch('http://localhost:3000/api/sectors')
     const result = await response.json()
     if (result.success) {
-      sectors.value = result.data.map(sector => ({
+      sectors.value = result.data.slice(0, 9).map(sector => ({
         id: sector.id,
         title: sector.name,
         description: sector.description,
