@@ -34,6 +34,7 @@ const seed = async () => {
       { name: 'Образование и педагогика', code: '44', description: 'Преподавание, воспитание, дополнительная работа с детьми.', image_url: '/edu.jpg', sort_order: 6 },
       { name: 'Сфера услуг и сервис', code: '43', description: 'Гостиничное дело, туризм, общественное питание, бытовые услуги.', image_url: '/service.jpg', sort_order: 7 },
       { name: 'Сельское хозяйство', code: '35', description: 'Агрономия, ветеринария, механизация сельского хозяйства.', image_url: '/agro.jpg', sort_order: 8 },
+      { name: 'Энергетика и электротехника', code: '13', description: 'Подготовка специалистов для энергетических предприятий, электросетей и эксплуатации электрооборудования.', image_url: '/energy-sector.png', sort_order: 9 },
     ];
 
     const sectorIds = {};
@@ -728,7 +729,7 @@ const seed = async () => {
       { code: '43.02.14', sectorCodes: ['43'] },
       { code: '35.02.01', sectorCodes: ['35'] },
       { code: '44.02.01', sectorCodes: ['44'] },
-      { code: '13.02.11', sectorCodes: ['08'] },
+      { code: '13.02.11', sectorCodes: ['13'] },
       { code: '09.02.06', sectorCodes: ['09'] },
       { code: '43.01.09', sectorCodes: ['43'] },
     ];

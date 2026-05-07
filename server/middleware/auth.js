@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken')
+const db = require('../db')
 const { getJwtSecret } = require('../config/security')
 
 const verifyToken = (token) => jwt.verify(token, getJwtSecret())
@@ -9,7 +10,7 @@ const getBearerToken = (req) => {
   return token
 }
 
-const requireAuth = (req, res, next) => {
+const requireAuth = async (req, res, next) => {
   try {
     const token = getBearerToken(req)
     if (!token) {
@@ -17,6 +18,10 @@ const requireAuth = (req, res, next) => {
     }
 
     req.user = verifyToken(token)
+    const userId = req.user.userId || req.user.id
+    if (userId) {
+      await db.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [userId])
+    }
     next()
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

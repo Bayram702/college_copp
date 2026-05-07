@@ -13,16 +13,22 @@ if (!fs.existsSync(collegeImagesDir)) {
   fs.mkdirSync(collegeImagesDir, { recursive: true });
 }
 
+const sectorImagesDir = path.join(uploadsDir, 'sectors');
+if (!fs.existsSync(sectorImagesDir)) {
+  fs.mkdirSync(sectorImagesDir, { recursive: true });
+}
+
 // Конфигурация хранилища
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, collegeImagesDir);
+    cb(null, req.path.includes('sector-image') ? sectorImagesDir : collegeImagesDir);
   },
   filename: function (req, file, cb) {
     // Генерируем уникальное имя файла: college-{timestamp}-{random}.{ext}
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const fileName = `college-${uniqueSuffix}${ext}`;
+    const prefix = req.path.includes('sector-image') ? 'sector' : 'college';
+    const fileName = `${prefix}-${uniqueSuffix}${ext}`;
     
     // Сохраняем имя файла в запросе для дальнейшего использования
     req.uploadedFileName = fileName;

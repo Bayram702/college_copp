@@ -416,6 +416,7 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN college_specialties cs ON s.id = cs.specialty_id AND cs.is_active = true
         WHERE s.status = 'active'
         GROUP BY s.code, s.name
+        HAVING COUNT(DISTINCT cs.college_id) > 0
       ) grouped_specialties
     `);
 

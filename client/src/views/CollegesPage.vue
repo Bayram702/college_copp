@@ -199,6 +199,7 @@ const SECTOR_ICONS = {
   '44': 'fas fa-chalkboard-teacher',
   '43': 'fas fa-utensils',
   '35': 'fas fa-seedling',
+  '13': 'fas fa-bolt',
   '15': 'fas fa-industry',
   default: 'fas fa-folder'
 }

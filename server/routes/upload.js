@@ -6,6 +6,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
 
 const requireCollegeAccess = [requireAuth, requireRole('college_rep', 'admin')];
+const requireAdmin = [requireAuth, requireRole('admin')];
 
 // Загрузка изображения для колледжа
 router.post('/college-image', requireCollegeAccess, upload.single('image'), async (req, res) => {
@@ -63,6 +64,27 @@ router.post('/college-image', requireCollegeAccess, upload.single('image'), asyn
       }
     }
     
+    res.status(500).json({ success: false, error: publicError });
+  }
+});
+
+router.post('/sector-image', requireAdmin, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Файл не загружен' });
+    }
+
+    const imageUrl = `/uploads/sectors/${req.uploadedFileName}`;
+
+    res.json({
+      success: true,
+      message: 'Изображение успешно загружено',
+      data: {
+        imageUrl
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error uploading sector image:', error);
     res.status(500).json({ success: false, error: publicError });
   }
 });

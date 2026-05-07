@@ -26,10 +26,10 @@
         </button>
         <button
           class="tab-btn"
-          :class="{ active: activeTab === 'settings' }"
-          @click="activeTab = 'settings'"
+          :class="{ active: activeTab === 'sectors' }"
+          @click="activeTab = 'sectors'"
         >
-          <i class="fas fa-cog"></i> Настройки
+          <i class="fas fa-layer-group"></i> Отрасли
         </button>
       </div>
     </div>
@@ -87,7 +87,7 @@
                   <th>Email</th>
                   <th>Роль</th>
                   <th>Статус</th>
-                  <th>Дата регистрации</th>
+                  <th>Последняя активность</th>
                   <th>Действия</th>
                 </tr>
               </thead>
@@ -108,7 +108,7 @@
                   <td>
                     <span class="status-badge" :class="getStatusClass(user.status)">{{ getStatusName(user.status) }}</span>
                   </td>
-                  <td>{{ formatDate(user.createdAt) }}</td>
+                  <td>{{ formatDate(user.lastLoginAt) }}</td>
                   <td>
                     <div class="action-buttons">
                       <button class="btn-icon btn-edit" @click="editUser(user)" title="Редактировать">
@@ -143,6 +143,9 @@
             <i class="fas fa-search"></i>
             <input v-model="collegeSearch" type="text" placeholder="Поиск колледжей..." @input="filterColleges">
           </div>
+          <button class="btn-add" @click="openCollegeModal">
+            <i class="fas fa-plus"></i> Добавить колледж
+          </button>
         </div>
         <div class="filters-bar">
           <select v-model="collegeFilter" @change="filterColleges" class="filter-select">
@@ -150,6 +153,11 @@
             <option value="active">Активные</option>
             <option value="with_rep">С представителем</option>
             <option value="without_rep">Без представителя</option>
+          </select>
+          <select v-model="collegeSort" @change="filterColleges" class="filter-select">
+            <option value="id">По номеру</option>
+            <option value="name_asc">А-Я</option>
+            <option value="name_desc">Я-А</option>
           </select>
         </div>
 
@@ -212,13 +220,62 @@
         </div>
       </div>
 
-      <!-- Вкладка: Настройки -->
-      <div v-if="activeTab === 'settings'" class="tab-content active">
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i>
-          <div><strong>В разработке:</strong> Здесь будут настройки главной страницы портала.</div>
+      <!-- Вкладка: Отрасли -->
+      <div v-if="activeTab === 'sectors'" class="tab-content active">
+        <div class="specialities-header">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input v-model="sectorSearch" type="text" placeholder="Поиск отраслей..." @input="filterSectors">
+          </div>
+          <button class="btn-add" @click="openSectorModal">
+            <i class="fas fa-plus"></i> Добавить отрасль
+          </button>
+        </div>
+
+        <div v-if="sectorsLoading" class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i> Загрузка...
+        </div>
+        <div v-else-if="sectorsError" class="error-state">
+          <i class="fas fa-exclamation-triangle"></i> {{ sectorsError }}
+          <button @click="fetchSectors" class="btn-retry">Повторить</button>
+        </div>
+        <div v-else class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Номер</th>
+                <th>Отрасль</th>
+                <th>Код</th>
+                <th>Программ</th>
+                <th>Колледжей</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="sector in filteredSectorsList" :key="sector.id">
+                <td>{{ sector.id }}</td>
+                <td>
+                  <div class="college-info">
+                    <strong>{{ sector.name }}</strong>
+                    <span v-if="sector.description" class="short-description">{{ sector.description }}</span>
+                  </div>
+                </td>
+                <td><span class="short-name">{{ sector.code }}</span></td>
+                <td>{{ sector.programs_count }}</td>
+                <td>{{ sector.colleges_count }}</td>
+                <td>
+                  <span class="status-badge" :class="getActiveClass(sector.is_active)">{{ sector.is_active ? 'Активная' : 'Неактивная' }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="filteredSectorsList.length === 0" class="empty-state">
+            <i class="fas fa-layer-group"></i>
+            <p>Отрасли не найдены</p>
+          </div>
         </div>
       </div>
+
     </div>
 
     <!-- Модальное окно пользователя -->
@@ -284,6 +341,113 @@
         </form>
       </div>
     </div>
+
+    <!-- Модальное окно колледжа -->
+    <div class="modal-overlay" :class="{ active: showCollegeModal }" @click.self="closeCollegeModal" v-show="showCollegeModal">
+      <div class="modal">
+        <button class="close-modal" @click="closeCollegeModal">&times;</button>
+        <h2>Добавить колледж</h2>
+        <form @submit.prevent="saveCollege" class="modal-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Название <span class="required">*</span></label>
+              <input v-model="collegeForm.name" type="text" class="form-control" :class="{ invalid: collegeErrors.name }" maxlength="255" @input="collegeForm.name = normalizeTextInput(collegeForm.name, 255)" required>
+              <small v-if="collegeErrors.name" class="field-error">{{ collegeErrors.name }}</small>
+            </div>
+            <div class="form-group">
+              <label>Краткое название</label>
+              <input v-model="collegeForm.shortName" type="text" class="form-control" :class="{ invalid: collegeErrors.shortName }" maxlength="50" @input="collegeForm.shortName = normalizeTextInput(collegeForm.shortName, 50)">
+              <small v-if="collegeErrors.shortName" class="field-error">{{ collegeErrors.shortName }}</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Город</label>
+            <input v-model="collegeForm.city" type="text" class="form-control" maxlength="120" @input="collegeForm.city = normalizeTextInput(collegeForm.city, 120)">
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <textarea v-model="collegeForm.description" class="form-control" rows="4" maxlength="1000" @input="collegeForm.description = normalizeTextInput(collegeForm.description, 1000)"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Телефон</label>
+              <input v-model="collegeForm.phone" type="tel" class="form-control" :class="{ invalid: collegeErrors.phone }" placeholder="+7 (999) 999-99-99" @input="collegeForm.phone = maskRussianPhone(collegeForm.phone)">
+              <small v-if="collegeErrors.phone" class="field-error">{{ collegeErrors.phone }}</small>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input v-model="collegeForm.email" type="email" class="form-control" :class="{ invalid: collegeErrors.email }" maxlength="255" @input="collegeForm.email = normalizeEmailInput(collegeForm.email)">
+              <small v-if="collegeErrors.email" class="field-error">{{ collegeErrors.email }}</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Сайт</label>
+            <input v-model="collegeForm.website" type="text" class="form-control" :class="{ invalid: collegeErrors.website }" maxlength="255" @input="collegeForm.website = normalizeUrlInput(collegeForm.website)" placeholder="https://example.ru">
+            <small v-if="collegeErrors.website" class="field-error">{{ collegeErrors.website }}</small>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i> {{ saving ? 'Сохранение...' : 'Сохранить' }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="closeCollegeModal">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно отрасли -->
+    <div class="modal-overlay" :class="{ active: showSectorModal }" @click.self="closeSectorModal" v-show="showSectorModal">
+      <div class="modal">
+        <button class="close-modal" @click="closeSectorModal">&times;</button>
+        <h2>Добавить отрасль</h2>
+        <form @submit.prevent="saveSector" class="modal-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Название <span class="required">*</span></label>
+              <input v-model="sectorForm.name" type="text" class="form-control" :class="{ invalid: sectorErrors.name }" maxlength="255" @input="sectorForm.name = normalizeTextInput(sectorForm.name, 255)" required>
+              <small v-if="sectorErrors.name" class="field-error">{{ sectorErrors.name }}</small>
+            </div>
+            <div class="form-group">
+              <label>Коды специальностей <span class="required">*</span></label>
+              <input v-model="sectorForm.code" type="text" class="form-control" :class="{ invalid: sectorErrors.code }" maxlength="50" @input="sectorForm.code = maskSectorCode(sectorForm.code)" required>
+              <small v-if="sectorErrors.code" class="field-error">{{ sectorErrors.code }}</small>
+              <small class="form-hint">Например: 09 или 09, 04. В отрасль попадут все специальности с такими начальными кодами.</small>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <textarea v-model="sectorForm.description" class="form-control" rows="4" maxlength="1000" @input="sectorForm.description = normalizeTextInput(sectorForm.description, 1000)"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Фотография отрасли</label>
+            <input
+              ref="sectorImageInputRef"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+              @change="handleSectorImageUpload"
+              style="display: none"
+            >
+            <div class="image-upload" @click="triggerSectorImageUpload">
+              <i :class="sectorImageUploading ? 'fas fa-spinner fa-spin' : 'fas fa-cloud-upload-alt'"></i>
+              <p>{{ sectorImageUploading ? 'Загрузка...' : 'Нажмите для загрузки фотографии' }}</p>
+              <p class="text-small">JPEG, PNG, GIF или WebP до 5 МБ</p>
+            </div>
+            <div v-if="sectorForm.image_url" class="image-preview">
+              <img :src="resolveImageUrl(sectorForm.image_url)" alt="Фото отрасли">
+              <button type="button" class="remove-image-btn" @click="sectorForm.image_url = ''" title="Удалить изображение">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" :disabled="saving">
+              <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i> {{ saving ? 'Сохранение...' : 'Сохранить' }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="closeSectorModal">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -298,8 +462,11 @@ import {
   normalizeEmailInput,
   normalizeRepresentative,
   normalizeTextInput,
+  normalizeUrl,
+  normalizeUrlInput,
   validateRepresentative
 } from '../utils/validation'
+import { resolveImageUrl } from '../utils/images'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
@@ -323,7 +490,15 @@ const collegesLoading = ref(false)
 const collegesError = ref(null)
 const collegeSearch = ref('')
 const collegeFilter = ref('all')
+const collegeSort = ref('id')
 const filteredCollegesList = ref([])
+
+// Отрасли
+const sectors = ref([])
+const sectorsLoading = ref(false)
+const sectorsError = ref(null)
+const sectorSearch = ref('')
+const filteredSectorsList = ref([])
 
 // Модальное окно
 const showUserModal = ref(false)
@@ -332,6 +507,14 @@ const showPassword = ref(false)
 const userForm = ref({ name: '', login: '', email: '', phone: '', password: '', role: 'college_rep', status: '', college_id: '' })
 const userErrors = ref({})
 const availableColleges = ref([])
+const showCollegeModal = ref(false)
+const collegeForm = ref({ name: '', shortName: '', city: '', description: '', phone: '', email: '', website: '' })
+const collegeErrors = ref({})
+const showSectorModal = ref(false)
+const sectorForm = ref({ name: '', code: '', description: '', image_url: '' })
+const sectorErrors = ref({})
+const sectorImageInputRef = ref(null)
+const sectorImageUploading = ref(false)
 
 // Загрузка списка колледжей для модалки
 const loadCollegesForSelect = async () => {
@@ -360,6 +543,7 @@ onMounted(() => {
 
 watch(activeTab, (tab) => {
   if (tab === 'colleges' && colleges.value.length === 0) fetchColleges()
+  if (tab === 'sectors' && sectors.value.length === 0) fetchSectors()
 })
 
 // Пользователи
@@ -418,7 +602,12 @@ const getRoleName = (role) => ({ admin: 'Администратор', college_re
 const normalizeUserStatus = (status) => status === 'blocked' ? 'inactive' : status
 const getStatusName = (status) => ({ active: 'Активный', inactive: 'Неактивный' }[normalizeUserStatus(status)] || status)
 const getStatusClass = (status) => ({ active: 'status-active', inactive: 'status-inactive' }[normalizeUserStatus(status)] || '')
+const getActiveClass = (isActive) => isActive ? 'status-active' : 'status-inactive'
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('ru-RU') : '—'
+const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+const isUrl = (value) => /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(value)
+const isPhone = (value) => /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(value)
+const maskSectorCode = (value) => String(value || '').replace(/[^\d,\s]/g, '').replace(/\s+/g, ' ').slice(0, 50)
 
 const openAddRepModal = () => {
   console.log('👤 openAddRepModal вызван')
@@ -502,7 +691,7 @@ const fetchColleges = async () => {
   try {
     const token = localStorage.getItem('authToken')
     const response = await axios.get(`${API_URL}/colleges/admin/list`, { headers: { 'Authorization': `Bearer ${token}` } })
-    if (response.data.success) { colleges.value = response.data.data; filteredCollegesList.value = colleges.value }
+    if (response.data.success) { colleges.value = response.data.data; filterColleges() }
   } catch (err) {
     collegesError.value = err.response?.status === 401 ? 'Сессия истекла' : err.message
     if (err.response?.status === 401) { localStorage.removeItem('authToken'); localStorage.removeItem('user'); router.push('/login') }
@@ -518,7 +707,182 @@ const filterColleges = () => {
   if (collegeFilter.value === 'active') filtered = filtered.filter(c => c.status === 'active')
   else if (collegeFilter.value === 'with_rep') filtered = filtered.filter(c => c.representatives.length > 0)
   else if (collegeFilter.value === 'without_rep') filtered = filtered.filter(c => c.representatives.length === 0)
+  if (collegeSort.value === 'name_asc') filtered.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  else if (collegeSort.value === 'name_desc') filtered.sort((a, b) => b.name.localeCompare(a.name, 'ru'))
+  else filtered.sort((a, b) => Number(a.id) - Number(b.id))
   filteredCollegesList.value = filtered
+}
+
+const openCollegeModal = () => {
+  collegeErrors.value = {}
+  collegeForm.value = { name: '', shortName: '', city: '', description: '', phone: '', email: '', website: '' }
+  showCollegeModal.value = true
+}
+
+const closeCollegeModal = () => { showCollegeModal.value = false; collegeErrors.value = {} }
+
+const validateCollegeForm = () => {
+  const errors = {}
+  const form = collegeForm.value
+  if (!form.name.trim() || form.name.trim().length < 3) errors.name = 'Название колледжа обязательно, минимум 3 символа'
+  if (form.shortName && form.shortName.trim().length > 50) errors.shortName = 'Краткое название: максимум 50 символов'
+  if (form.phone && !isPhone(form.phone)) errors.phone = 'Телефон: +7 (999) 999-99-99'
+  if (form.email && !isEmail(form.email)) errors.email = 'Укажите корректный email'
+  if (form.website && !isUrl(normalizeUrl(form.website))) errors.website = 'Укажите корректный URL'
+  return errors
+}
+
+const saveCollege = async () => {
+  collegeErrors.value = validateCollegeForm()
+  if (Object.keys(collegeErrors.value).length) {
+    alertMessage.value = firstError(collegeErrors.value)
+    alertType.value = 'error'
+    return
+  }
+
+  saving.value = true
+  try {
+    const token = localStorage.getItem('authToken')
+    const body = {
+      name: collegeForm.value.name.trim(),
+      shortName: collegeForm.value.shortName.trim(),
+      city: collegeForm.value.city.trim(),
+      description: collegeForm.value.description.trim(),
+      phone: collegeForm.value.phone.trim(),
+      email: normalizeEmailInput(collegeForm.value.email),
+      website: normalizeUrl(collegeForm.value.website)
+    }
+    await axios.post(`${API_URL}/colleges`, body, { headers: { Authorization: `Bearer ${token}` } })
+    closeCollegeModal()
+    await fetchColleges()
+    alertMessage.value = 'Колледж добавлен'
+    alertType.value = 'success'
+  } catch (e) {
+    collegeErrors.value = e.response?.data?.errors || {}
+    alertMessage.value = 'Ошибка: ' + (e.response?.data?.error || e.message)
+    alertType.value = 'error'
+  } finally { saving.value = false }
+}
+
+// Отрасли
+const fetchSectors = async () => {
+  sectorsLoading.value = true; sectorsError.value = null
+  try {
+    const token = localStorage.getItem('authToken')
+    const response = await axios.get(`${API_URL}/sectors?include_inactive=1`, { headers: { Authorization: `Bearer ${token}` } })
+    if (response.data.success) { sectors.value = response.data.data; filterSectors() }
+  } catch (err) {
+    sectorsError.value = err.response?.status === 401 ? 'Сессия истекла' : err.message
+    if (err.response?.status === 401) { localStorage.removeItem('authToken'); localStorage.removeItem('user'); router.push('/login') }
+  } finally { sectorsLoading.value = false }
+}
+
+const filterSectors = () => {
+  let filtered = [...sectors.value]
+  if (sectorSearch.value.trim()) {
+    const s = sectorSearch.value.trim().toLowerCase()
+    filtered = filtered.filter((sector) =>
+      sector.name.toLowerCase().includes(s) ||
+      sector.code.toLowerCase().includes(s) ||
+      sector.description?.toLowerCase().includes(s)
+    )
+  }
+  filteredSectorsList.value = filtered
+}
+
+const openSectorModal = () => {
+  sectorErrors.value = {}
+  sectorForm.value = { name: '', code: '', description: '', image_url: '' }
+  showSectorModal.value = true
+}
+
+const closeSectorModal = () => { showSectorModal.value = false; sectorErrors.value = {} }
+
+const getSectorCodePrefixes = () => sectorForm.value.code
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean)
+
+const validateSectorForm = () => {
+  const errors = {}
+  const form = sectorForm.value
+  const prefixes = getSectorCodePrefixes()
+  if (!form.name.trim() || form.name.trim().length < 3) errors.name = 'Название отрасли обязательно, минимум 3 символа'
+  if (prefixes.length === 0 || prefixes.some((code) => !/^\d{2}$/.test(code))) errors.code = 'Коды специальностей: две цифры, можно несколько через запятую'
+  if (form.image_url && !isUrl(normalizeUrl(form.image_url))) errors.image_url = 'Укажите корректный URL изображения'
+  return errors
+}
+
+const triggerSectorImageUpload = () => {
+  sectorImageInputRef.value?.click()
+}
+
+const handleSectorImageUpload = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    sectorErrors.value.image_url = 'Разрешены только изображения JPEG, PNG, GIF или WebP'
+    event.target.value = ''
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    sectorErrors.value.image_url = 'Файл должен быть не больше 5 МБ'
+    event.target.value = ''
+    return
+  }
+
+  sectorImageUploading.value = true
+  try {
+    const token = localStorage.getItem('authToken')
+    const formData = new FormData()
+    formData.append('image', file)
+    const response = await axios.post(`${API_URL}/upload/sector-image`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    if (response.data.success) {
+      sectorForm.value.image_url = response.data.data.imageUrl
+      sectorErrors.value.image_url = ''
+    }
+  } catch (e) {
+    sectorErrors.value.image_url = e.response?.data?.error || e.message
+  } finally {
+    sectorImageUploading.value = false
+    event.target.value = ''
+  }
+}
+
+const saveSector = async () => {
+  sectorErrors.value = validateSectorForm()
+  if (Object.keys(sectorErrors.value).length) {
+    alertMessage.value = firstError(sectorErrors.value)
+    alertType.value = 'error'
+    return
+  }
+
+  saving.value = true
+  try {
+    const token = localStorage.getItem('authToken')
+    const body = {
+      name: sectorForm.value.name.trim(),
+      code: sectorForm.value.code.trim(),
+      specialtyCodes: getSectorCodePrefixes(),
+      description: sectorForm.value.description.trim(),
+      image_url: sectorForm.value.image_url
+    }
+    await axios.post(`${API_URL}/sectors`, body, { headers: { Authorization: `Bearer ${token}` } })
+    closeSectorModal()
+    await fetchSectors()
+    alertMessage.value = 'Отрасль добавлена'
+    alertType.value = 'success'
+  } catch (e) {
+    sectorErrors.value = e.response?.data?.errors || {}
+    alertMessage.value = 'Ошибка: ' + (e.response?.data?.error || e.message)
+    alertType.value = 'error'
+  } finally { saving.value = false }
 }
 
 const logout = () => {
@@ -600,6 +964,7 @@ const logout = () => {
 .college-info { display: flex; flex-direction: column; gap: 4px; }
 .college-info strong { color: #1e293b; }
 .short-name { color: #64748b; font-size: 0.8rem; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; display: inline-block; width: fit-content; }
+.short-description { color: #64748b; font-size: 0.88rem; max-width: 520px; }
 
 .action-buttons { display: flex; gap: 8px; }
 .btn-icon { width: 36px; height: 36px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
@@ -642,6 +1007,15 @@ const logout = () => {
 .btn-secondary:hover { background: #e2e8f0; }
 .required { color: #dc2626; }
 .form-hint { color: #94a3b8; font-size: 0.8rem; margin-top: 4px; display: block; }
+.text-small { color: #94a3b8; font-size: 0.85rem; }
+.image-upload { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; background: #f8fafc; }
+.image-upload:hover { border-color: #2563eb; background: #eff6ff; }
+.image-upload i { color: #64748b; display: block; font-size: 2.2rem; margin-bottom: 10px; }
+.image-upload p { margin: 4px 0; }
+.image-preview { margin-top: 14px; position: relative; width: 220px; max-width: 100%; }
+.image-preview img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12); display: block; }
+.remove-image-btn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border: none; border-radius: 50%; background: rgba(15, 23, 42, 0.78); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.remove-image-btn:hover { background: #dc2626; }
 
 @media (max-width: 768px) {
   .admin-panel .container {

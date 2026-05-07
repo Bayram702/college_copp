@@ -61,16 +61,19 @@ router.get('/', async (req, res) => {
       params.push(searchParam, searchParam);
     }
 
+    const havingClause = `HAVING COUNT(DISTINCT cs.college_id) FILTER (WHERE cs.is_active = true) > 0`;
+
     const countQuery = `
       SELECT COUNT(*) FROM (
         ${query.replace(/SELECT[\s\S]*?FROM specialties s/, 'SELECT s.code, s.name FROM specialties s')}
         GROUP BY s.code, s.name
+        ${havingClause}
       ) grouped_specialties
     `;
     const countResult = await db.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count, 10);
 
-    query += ` GROUP BY s.code, s.name ORDER BY s.name LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    query += ` GROUP BY s.code, s.name ${havingClause} ORDER BY s.name LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
     params.push(limitNum, offset);
 
     const result = await db.query(query, params);
@@ -128,6 +131,7 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN college_specialties cs ON s.id = cs.specialty_id AND cs.is_active = true
         WHERE s.status = 'active'
         GROUP BY s.code, s.name
+        HAVING COUNT(DISTINCT cs.college_id) FILTER (WHERE cs.is_active = true) > 0
       ) grouped_specialties
     `);
 

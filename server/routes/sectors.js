@@ -1,7 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { requireAuth, requireRole } = require('../middleware/auth');
 const { publicError } = require('../middleware/security');
+
+const requireAdmin = [requireAuth, requireRole('admin')];
+
+const normalizeSpecialtyPrefixes = (value) => {
+  const raw = Array.isArray(value) ? value.join(',') : String(value || '');
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.replace(/\D/g, '').slice(0, 2))
+    .filter((item, index, list) => item.length === 2 && list.indexOf(item) === index);
+};
+
+const linkSpecialtiesByPrefixes = async (client, sectorId, prefixes) => {
+  if (!prefixes.length) return 0;
+
+  const result = await client.query(
+    `
+      INSERT INTO specialty_sectors (specialty_id, sector_id)
+      SELECT sp.id, $1
+      FROM specialties sp
+      WHERE EXISTS (
+        SELECT 1
+        FROM unnest($2::text[]) AS prefix
+        WHERE sp.code LIKE prefix || '.%'
+      )
+      ON CONFLICT (specialty_id, sector_id) DO NOTHING
+      RETURNING specialty_id
+    `,
+    [sectorId, prefixes]
+  );
+
+  return result.rowCount;
+};
 
 router.get('/', async (req, res) => {
   try {
@@ -132,32 +167,52 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
+  const client = await db.connect();
   try {
-    const { name, code, description, image_url, sort_order } = req.body;
+    const { name, description, image_url } = req.body;
+    const specialtyPrefixes = normalizeSpecialtyPrefixes(req.body.specialtyCodes ?? req.body.code);
+    const code = specialtyPrefixes.join(',');
 
-    if (!name || !code) {
-      return res.status(400).json({ success: false, error: 'Название и код обязательны' });
+    if (!name || specialtyPrefixes.length === 0) {
+      return res.status(400).json({ success: false, error: 'Название и коды специальностей обязательны' });
     }
 
-    const result = await db.query(
-      `INSERT INTO sectors (name, code, description, image_url, sort_order)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [name, code, description || '', image_url || null, sort_order || 0]
+    await client.query('BEGIN');
+    const sortResult = await client.query(`SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM sectors`);
+    const sortOrder = Number(sortResult.rows[0]?.next_order) || 1;
+
+    const result = await client.query(
+      `
+        INSERT INTO sectors (name, code, description, image_url, sort_order)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `,
+      [name, code, description || '', image_url || null, sortOrder]
     );
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const linkedCount = await linkSpecialtiesByPrefixes(client, result.rows[0].id, specialtyPrefixes);
+    await client.query('COMMIT');
+
+    res.status(201).json({ success: true, data: { ...result.rows[0], linked_specialties_count: linkedCount } });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error creating sector:', error);
     res.status(500).json({ success: false, error: publicError });
+  } finally {
+    client.release();
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
+  const client = await db.connect();
   try {
     const { id } = req.params;
-    const { name, code, description, image_url, sort_order, is_active } = req.body;
+    const { name, description, image_url, sort_order, is_active } = req.body;
+    const specialtyPrefixes = req.body.specialtyCodes !== undefined || req.body.code !== undefined
+      ? normalizeSpecialtyPrefixes(req.body.specialtyCodes ?? req.body.code)
+      : null;
+    const code = specialtyPrefixes ? specialtyPrefixes.join(',') : null;
 
     const updates = [];
     const params = [];
@@ -177,21 +232,35 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Нет данных для обновления' });
     }
 
+    await client.query('BEGIN');
+
     const query = `UPDATE sectors SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-    const result = await db.query(query, params);
+    const result = await client.query(query, params);
 
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, error: 'Сектор не найден' });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    let linkedCount = 0;
+    if (specialtyPrefixes) {
+      await client.query('DELETE FROM specialty_sectors WHERE sector_id = $1', [id]);
+      linkedCount = await linkSpecialtiesByPrefixes(client, id, specialtyPrefixes);
+    }
+
+    await client.query('COMMIT');
+
+    res.json({ success: true, data: { ...result.rows[0], linked_specialties_count: linkedCount } });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error updating sector:', error);
     res.status(500).json({ success: false, error: 'Ошибка сервера' });
+  } finally {
+    client.release();
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -33,8 +33,8 @@
             <div v-else class="user-menu">
               <template v-if="isCollegeRepresentative">
                 <router-link to="/" active-class="active">Главная</router-link>
-                <router-link to="/colleges" active-class="active">Колледжи</router-link>
                 <router-link to="/sector" active-class="active">Специальности</router-link>
+                <router-link to="/colleges" active-class="active">Колледжи</router-link>
               </template>
               <router-link
                 :to="userDashboardLink"
