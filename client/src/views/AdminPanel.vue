@@ -372,7 +372,13 @@
             <div class="form-group">
               <label v-if="!editingUser">Пароль <span class="required">*</span></label>
               <label v-else>Новый пароль</label>
-              <input :type="showPassword ? 'text' : 'password'" v-model="userForm.password" class="form-control" :class="{ invalid: userErrors.password }" maxlength="100" :required="!editingUser">
+              <div class="password-control">
+                <input :type="showPassword ? 'text' : 'password'" v-model="userForm.password" class="form-control" :class="{ invalid: userErrors.password }" maxlength="100" :required="!editingUser">
+                <button type="button" class="btn-generate-password" @click="generateUserPassword">
+                  <i class="fas fa-wand-magic-sparkles"></i>
+                  Сгенерировать
+                </button>
+              </div>
               <small v-if="userErrors.password" class="field-error">{{ userErrors.password }}</small>
             </div>
           </div>
@@ -678,6 +684,26 @@ const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 const isUrl = (value) => /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(value)
 const isPhone = (value) => /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(value)
 const maskSectorCode = (value) => String(value || '').replace(/[^\d,\s]/g, '').replace(/\s+/g, ' ').slice(0, 50)
+
+const generateUserPassword = () => {
+  const lower = 'abcdefghijkmnopqrstuvwxyz'
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const digits = '23456789'
+  const symbols = '!@#$%&*?'
+  const groups = [lower, upper, digits, symbols]
+  const allChars = groups.join('')
+  const bytes = new Uint32Array(14)
+  window.crypto.getRandomValues(bytes)
+  const required = groups.map((group, index) => group[bytes[index] % group.length])
+  const rest = Array.from(bytes.slice(required.length), (value) => allChars[value % allChars.length])
+  const password = [...required, ...rest]
+    .sort(() => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 - 0.5)
+    .join('')
+
+  userForm.value.password = password
+  showPassword.value = true
+  delete userErrors.value.password
+}
 
 const openAddRepModal = () => {
   console.log('👤 openAddRepModal вызван')
@@ -1070,6 +1096,9 @@ const logout = () => {
 .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #475569; }
 .form-control { width: 100%; padding: 12px 15px; border: 1px solid #e1e8ed; border-radius: 8px; font-size: 1rem; }
 .form-control.invalid { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08); }
+.password-control { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.btn-generate-password { width: fit-content; min-height: 38px; padding: 0 14px; border: 1px solid #c7d2fe; border-radius: 8px; background: #eef2ff; color: #4338ca; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; transition: all 0.2s; }
+.btn-generate-password:hover { background: #e0e7ff; border-color: #818cf8; }
 .field-error { color: #dc2626; font-size: 0.8rem; margin-top: 4px; display: block; }
 .form-actions { display: flex; gap: 15px; margin-top: 20px; }
 .btn { padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s; }
@@ -1189,6 +1218,11 @@ const logout = () => {
   .form-row {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .btn-generate-password {
+    width: 100%;
+    min-height: 44px;
   }
 }
 </style>
