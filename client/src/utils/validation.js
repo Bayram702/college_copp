@@ -127,6 +127,8 @@ export const validateCollege = (form) => {
   if (!intInRange(form.commercial_places)) errors.commercial_places = 'Коммерческие места: целое число 0-10000'
   if (!scoreInRange(form.avg_score)) errors.avg_score = 'Средний балл: 0-5, максимум 1 знак после запятой'
   if (!scoreInRange(form.min_score)) errors.min_score = 'Минимальный балл: 0-5, максимум 1 знак после запятой'
+  if (!['admin', 'college_rep'].includes(role)) errors.role = 'Недопустимая роль'
+  if (role === 'college_rep' && form.college_id && Number(form.college_id) <= 0) errors.college_id = 'Выберите корректный колледж'
   if (!['active', 'inactive'].includes(form.status)) errors.status = 'Недопустимый статус'
   validateSafeText(errors, 'professionalitet_cluster', form.professionalitet_cluster, 'Кластер')
   validateTextList(errors, 'opportunities', form.opportunities, 'Возможности')
@@ -158,6 +160,7 @@ export const normalizeCollege = (form) => ({
 
 export const validateRepresentative = (form, { editing = false } = {}) => {
   const errors = {}
+  const role = form.role || 'college_rep'
   if (isBlank(form.name) || trimText(form.name).length < 2 || trimText(form.name).length > 255) errors.name = 'ФИО: от 2 до 255 символов'
   validateSafeText(errors, 'name', form.name, 'ФИО')
   if (isBlank(form.login) || !isLogin(trimText(form.login))) errors.login = 'Логин: латиница, цифры и _, 3-50 символов'
@@ -170,16 +173,17 @@ export const validateRepresentative = (form, { editing = false } = {}) => {
 }
 
 export const normalizeRepresentative = (form) => {
-  const collegeId = form.college_id || null
+  const role = form.role || 'college_rep'
+  const collegeId = role === 'college_rep' ? (form.college_id || null) : null
   return {
     ...form,
     name: trimText(normalizeTextInput(form.name, 255)),
     login: maskLogin(form.login),
     email: normalizeEmailInput(form.email),
     phone: trimText(form.phone || ''),
-    role: 'college_rep',
+    role,
     college_id: collegeId,
-    status: collegeId ? form.status : 'inactive'
+    status: role === 'college_rep' && !collegeId ? 'inactive' : form.status
   }
 }
 

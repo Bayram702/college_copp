@@ -38,13 +38,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { apiPath } from '../utils/api'
+import { resolveImageUrl } from '../utils/images'
 
 const sectors = ref([])
 const loading = ref(true)
 
 const loadSectors = async () => {
   try {
-    const response = await fetch('http://localhost:3000/api/sectors')
+    const response = await fetch(apiPath('/sectors'))
     const result = await response.json()
     if (result.success) {
       sectors.value = result.data.slice(0, 9).map(sector => ({
@@ -53,7 +55,7 @@ const loadSectors = async () => {
         description: sector.description,
         colleges: sector.colleges_count,
         programs: sector.programs_count,
-        image: sector.image_url || '/default-sector.jpg',
+        image: resolveImageUrl(sector.image_url, '/default-sector.jpg'),
         link: { path: '/sector', query: { sector_id: String(sector.id) } }
       }))
     }

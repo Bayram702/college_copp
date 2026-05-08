@@ -31,6 +31,13 @@
         >
           <i class="fas fa-layer-group"></i> Отрасли
         </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'settings' }"
+          @click="activeTab = 'settings'"
+        >
+          <i class="fas fa-cog"></i> Настройки
+        </button>
       </div>
     </div>
 
@@ -49,18 +56,10 @@
             <i class="fas fa-search"></i>
             <input v-model="userSearch" type="text" placeholder="Поиск пользователей..." @input="debouncedSearch">
           </div>
-          <button class="btn-add" @click="openAddRepModal">
-            <i class="fas fa-user-plus"></i> Добавить представителя колледжа
-          </button>
         </div>
 
         <!-- Фильтры -->
         <div class="filters-bar">
-          <select v-model="userFilters.role" @change="applyUserFilters" class="filter-select">
-            <option value="all">Все роли</option>
-            <option value="admin">Администраторы</option>
-            <option value="college_rep">Представители колледжей</option>
-          </select>
           <select v-model="userFilters.status" @change="applyUserFilters" class="filter-select">
             <option value="all">Все статусы</option>
             <option value="active">Активные</option>
@@ -276,6 +275,73 @@
         </div>
       </div>
 
+      <!-- Вкладка: Настройки -->
+      <div v-if="activeTab === 'settings'" class="tab-content active">
+        <div class="specialities-header">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input v-model="userSearch" type="text" placeholder="Поиск администраторов..." @input="debouncedSearch">
+          </div>
+        </div>
+
+        <div class="filters-bar">
+          <select v-model="userFilters.status" @change="applyUserFilters" class="filter-select">
+            <option value="all">Все статусы</option>
+            <option value="active">Активные</option>
+            <option value="inactive">Неактивные</option>
+          </select>
+        </div>
+
+        <div v-if="usersLoading" class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i> Загрузка...
+        </div>
+        <div v-else-if="usersError" class="error-state">
+          <i class="fas fa-exclamation-triangle"></i> {{ usersError }}
+          <button @click="fetchUsers" class="btn-retry">Повторить</button>
+        </div>
+        <div v-else class="table-container users-table-container">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Номер</th>
+                  <th>Администратор</th>
+                  <th>Логин</th>
+                  <th>Email</th>
+                  <th>Статус</th>
+                  <th>Последняя активность</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="user in users" :key="user.id">
+                  <td>{{ user.id }}</td>
+                  <td>
+                    <div class="user-info">
+                      <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+                      <span>{{ user.name }}</span>
+                    </div>
+                  </td>
+                  <td>{{ user.login }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="status-badge" :class="getStatusClass(user.status)">{{ getStatusName(user.status) }}</span>
+                  </td>
+                  <td>{{ formatDate(user.lastLoginAt) }}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn-icon btn-edit" @click="editUser(user)" title="Редактировать">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Модальное окно пользователя -->
@@ -324,7 +390,7 @@
             <input v-model="userForm.phone" type="tel" class="form-control" :class="{ invalid: userErrors.phone }" placeholder="+7 (999) 999-99-99" @input="userForm.phone = maskRussianPhone(userForm.phone)">
             <small v-if="userErrors.phone" class="field-error">{{ userErrors.phone }}</small>
           </div>
-          <div class="form-group">
+          <div v-if="userForm.role === 'college_rep'" class="form-group">
             <label>Колледж</label>
             <select v-model="userForm.college_id" class="form-control" :class="{ invalid: userErrors.college_id }">
               <option value="">Выберите колледж</option>
@@ -455,6 +521,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_URL } from '../utils/api'
 import {
   firstError,
   maskLogin,
@@ -468,7 +535,6 @@ import {
 } from '../utils/validation'
 import { resolveImageUrl } from '../utils/images'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 
 const activeTab = ref('users')
@@ -542,6 +608,10 @@ onMounted(() => {
 })
 
 watch(activeTab, (tab) => {
+  if (tab === 'users' || tab === 'settings') {
+    userPagination.value.page = 1
+    fetchUsers()
+  }
   if (tab === 'colleges' && colleges.value.length === 0) fetchColleges()
   if (tab === 'sectors' && sectors.value.length === 0) fetchSectors()
 })
@@ -553,7 +623,7 @@ const fetchUsers = async () => {
   try {
     const token = localStorage.getItem('authToken')
     const params = new URLSearchParams({ page: userPagination.value.page, limit: userPagination.value.limit })
-    if (userFilters.value.role !== 'all') params.append('role', userFilters.value.role)
+    params.append('role', activeTab.value === 'settings' ? 'admin' : 'college_rep')
     if (userFilters.value.status !== 'all') params.append('status', userFilters.value.status)
     if (userSearch.value.trim()) params.append('search', userSearch.value.trim())
 
@@ -621,11 +691,7 @@ const openAddRepModal = () => {
 }
 const closeUserModal = () => { showUserModal.value = false; userErrors.value = {} }
 const editUser = (user) => {
-  if (user.role?.name !== 'college_rep') {
-    alertMessage.value = 'Редактировать здесь можно только представителей колледжей'
-    alertType.value = 'error'
-    return
-  }
+  const role = user.role?.name || 'college_rep'
   editingUser.value = user
   userErrors.value = {}
   userForm.value = {
@@ -634,16 +700,15 @@ const editUser = (user) => {
     email: user.email || '',
     phone: user.phone || '',
     password: '',
-    role: 'college_rep',
+    role,
     status: user.status || 'active',
-    college_id: user.college?.id || user.college_id || ''
+    college_id: role === 'college_rep' ? (user.college?.id || user.college_id || '') : ''
   }
   showUserModal.value = true
-  loadCollegesForSelect()
+  if (role === 'college_rep') loadCollegesForSelect()
 }
 
 const saveUser = async () => {
-  userForm.value.role = 'college_rep'
   userErrors.value = validateRepresentative(userForm.value, { editing: !!editingUser.value })
   if (Object.keys(userErrors.value).length) {
     alertMessage.value = firstError(userErrors.value)

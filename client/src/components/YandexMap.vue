@@ -23,6 +23,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { apiPath } from '../utils/api'
 
 const mapContainer = ref(null)
 const colleges = ref([])
@@ -58,7 +59,7 @@ const loadYandexMaps = () => {
 const loadCollegesFromAPI = async () => {
   try {
     console.log('📡 Загрузка колледжей для карты...')
-    const response = await fetch('http://localhost:3000/api/colleges/map')
+    const response = await fetch(apiPath('/colleges/map'))
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)

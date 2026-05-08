@@ -82,9 +82,9 @@
 import { computed, onUnmounted, ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
+import { API_URL } from '../utils/api'
 import { maskLogin } from '../utils/validation'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 const route = useRoute()
 

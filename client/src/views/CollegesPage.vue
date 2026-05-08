@@ -186,9 +186,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import axios from 'axios'
 import { Splide, SplideSlide } from '@splidejs/vue-splide'
 import '@splidejs/vue-splide/css'
+import { API_URL } from '../utils/api'
 import { resolveImageUrl } from '../utils/images'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const splideOptions = {
   type: 'slide',

@@ -154,7 +154,7 @@ router.post('/', requireAdmin, async (req, res) => {
     const roleRes = await db.query('SELECT id FROM roles WHERE name = $1', [role])
     if (roleRes.rows.length === 0) return res.status(400).json({ success: false, error: 'Неверная роль' })
 
-    if (college_id) {
+    if (role === 'college_rep' && college_id) {
       const existingRep = await db.query(
         'SELECT id FROM users WHERE college_id = $1 AND role_id = $2',
         [college_id, roleRes.rows[0].id]
@@ -353,7 +353,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     }
 
     const collegeRepRole = await db.query(`SELECT id FROM roles WHERE name = 'college_rep'`)
-    if (college_id && collegeRepRole.rows.length > 0) {
+    if (role === 'college_rep' && college_id && collegeRepRole.rows.length > 0) {
       const existingRep = await db.query(
         'SELECT id FROM users WHERE college_id = $1 AND role_id = $2 AND id != $3',
         [college_id, collegeRepRole.rows[0].id, id]

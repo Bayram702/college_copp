@@ -52,6 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { apiPath } from '../utils/api'
 import { resolveImageUrl } from '../utils/images'
 
 const infoItems = ref([
@@ -86,7 +87,7 @@ const loading = ref(true)
 
 const loadProfessionalitetColleges = async () => {
   try {
-    const response = await fetch('http://localhost:3000/api/colleges?professionalitet=yes&limit=20')
+    const response = await fetch(apiPath('/colleges?professionalitet=yes&limit=20'))
     const result = await response.json()
     if (result.success) {
       colleges.value = result.data.map(c => ({

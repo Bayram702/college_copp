@@ -714,9 +714,9 @@ import {
   validateCollege,
   validateSpecialty
 } from '../utils/validation'
+import { API_URL } from '../utils/api'
 import { resolveImageUrl } from '../utils/images'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const router = useRouter()
 
 const activeTab = ref('college')

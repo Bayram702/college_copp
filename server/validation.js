@@ -175,10 +175,11 @@ const validateRepresentativePayload = (payload, { create = true } = {}) => {
   }
   if (isBlank(data.college_id)) {
     data.college_id = null
-    data.status = 'inactive'
   } else {
     data.college_id = Number(data.college_id)
   }
+  if (data.role === 'admin') data.college_id = null
+  if (data.role === 'college_rep' && data.college_id === null) data.status = 'inactive'
 
   if (isBlank(data.name)) errors.name = 'ФИО обязательно'
   else addLengthError(errors, 'name', data.name, 'ФИО', { min: 2, max: 255 })
@@ -192,7 +193,7 @@ const validateRepresentativePayload = (payload, { create = true } = {}) => {
   if (!create && data.password && (data.password.length < 8 || data.password.length > 100)) {
     errors.password = 'Новый пароль: от 8 до 100 символов'
   }
-  if (data.role !== 'college_rep') errors.role = 'Можно создавать только представителей колледжа'
+  if (!['admin', 'college_rep'].includes(data.role)) errors.role = 'Недопустимая роль'
   if (data.college_id !== null && (!Number.isInteger(data.college_id) || data.college_id <= 0)) errors.college_id = 'Выберите корректный колледж'
   if (!STATUS_VALUES.includes(data.status)) errors.status = 'Недопустимый статус пользователя'
 

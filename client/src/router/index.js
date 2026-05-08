@@ -1,12 +1,11 @@
 // router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import axios from 'axios'
+import { API_URL } from '../utils/api'
 import HomePage from '../views/HomePage.vue'
 import SpecialtiesPage from '../views/SpecialtiesPage.vue'
 import CollegesPage from '../views/CollegesPage.vue'
 import SpecialtyDetail from '../views/SpecialtyDetail.vue'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const routes = [
   {

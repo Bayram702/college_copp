@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { apiPath } from '../utils/api'
 
 const footerSettings = ref({
   address: 'г. Уфа, ул. Ленина, 1',
@@ -9,7 +10,7 @@ const footerSettings = ref({
 
 const loadFooterSettings = async () => {
   try {
-    const response = await fetch('http://localhost:3000/api/settings')
+    const response = await fetch(apiPath('/settings'))
     const result = await response.json()
     if (result.success) {
       const data = result.data
