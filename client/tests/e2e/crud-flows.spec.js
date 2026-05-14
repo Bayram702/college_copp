@@ -16,6 +16,27 @@ async function loginAs(request, username, password) {
   }
 }
 
+async function fetchDirectorySpecialty(request) {
+  const sectorsResponse = await request.get(`${apiBase}/sectors`)
+  expect(sectorsResponse.ok(), await sectorsResponse.text()).toBeTruthy()
+  const sectorsBody = await sectorsResponse.json()
+  expect(sectorsBody.success).toBeTruthy()
+  const firstSector = sectorsBody.data.find((item) => item.id && item.code)
+  expect(firstSector).toBeTruthy()
+
+  const specialtiesResponse = await request.get(`${apiBase}/specialties/directory?sector_id=${firstSector.id}`)
+  expect(specialtiesResponse.ok(), await specialtiesResponse.text()).toBeTruthy()
+  const specialtiesBody = await specialtiesResponse.json()
+  expect(specialtiesBody.success).toBeTruthy()
+  expect(Array.isArray(specialtiesBody.data)).toBeTruthy()
+  expect(specialtiesBody.data.length).toBeGreaterThan(0)
+
+  return {
+    sector: firstSector,
+    specialty: specialtiesBody.data[0]
+  }
+}
+
 const authHeaders = (token) => ({ Authorization: `Bearer ${token}` })
 
 async function expectValidationError(response) {
@@ -79,11 +100,13 @@ test.describe.serial('admin and representative CRUD flows', () => {
   let repToken
   let specialtyId
   let addressId
+  let directorySpecialty
 
   test.beforeAll(async ({ request }, testInfo) => {
     flowId = `${testInfo.project.name}-${runId}`.replace(/[^A-Za-z0-9_@.-]/g, '_')
     const admin = await loginAs(request, 'admin', 'admin123')
     adminToken = admin.token
+    directorySpecialty = await fetchDirectorySpecialty(request)
   })
 
   test('rejects invalid representative, college and specialty payloads', async ({ request }) => {
@@ -113,14 +136,30 @@ test.describe.serial('admin and representative CRUD flows', () => {
     expect([401, 403]).toContain(unauthSpecialty.status())
   })
 
-  test('creates and edits a representative without a college as inactive', async ({ request }) => {
+  test('rejects active representative without a college and allows inactive draft', async ({ request }) => {
     const suffix = `no_college_${flowId.replace(/[^A-Za-z0-9_]/g, '_').slice(-30)}`
+    const activeWithoutCollege = await request.post(`${apiBase}/users`, {
+      headers: authHeaders(adminToken),
+      data: {
+        name: `E2E Representative ${suffix}`,
+        login: `e2e_no_college_active_${suffix}`.slice(0, 50),
+        email: `no-college-active-${flowId}@example.com`,
+        phone: '+7 (999) 111-22-33',
+        password: 'rep12345',
+        role: 'college_rep',
+        status: 'active',
+        college_id: null
+      }
+    })
+    const activeError = await expectValidationError(activeWithoutCollege)
+    expect(activeError.errors.college_id).toBeTruthy()
+
     const { body } = await createRepresentative(request, adminToken, {
       suffix,
       login: `e2e_no_college_${suffix}`.slice(0, 50),
       email: `no-college-${flowId}@example.com`,
       college_id: null,
-      status: 'active'
+      status: 'inactive'
     })
 
     expect(body.data.status).toBe('inactive')
@@ -137,7 +176,7 @@ test.describe.serial('admin and representative CRUD flows', () => {
         phone: '+7 (999) 111-22-34',
         password: '',
         role: 'college_rep',
-        status: 'active',
+        status: 'inactive',
         college_id: null
       }
     })
@@ -301,29 +340,29 @@ test.describe.serial('admin and representative CRUD flows', () => {
     const invalid = await request.post(`${apiBase}/colleges/specialties`, {
       headers: authHeaders(repToken),
       data: {
-        code: 'bad-code',
-        name: 'No',
+        sector_id: directorySpecialty.sector.id,
+        specialty_id: directorySpecialty.specialty.id,
         form: 'invalid',
         base_education: '12',
-        budget_places: -1
+        budget_places: -1,
+        teaching_address: ''
       }
     })
     await expectValidationError(invalid)
 
     const specialtyPayload = {
-      code: `99.02.${String(Date.now()).slice(-2)}`,
-      name: `E2E Specialty ${flowId}`,
-      description: 'Created by Playwright e2e tests',
-      qualification: 'Specialist',
-      duration: '2 years',
-      base_education: '9',
-      form: 'full-time',
+      sector_id: directorySpecialty.sector.id,
+      specialty_id: directorySpecialty.specialty.id,
+      teaching_address: 'г. Уфа, ул. Тестовая, 10',
       exams: 'Math',
       budget_places: 12,
       commercial_places: 6,
       price_per_year: 50000,
       avg_score: 4.2,
-      status: 'active'
+      status: 'active',
+      admission_method: 'email',
+      admission_link: 'mailto:admission@example.com',
+      admission_instructions: 'Отправьте сканы документов на почту'
     }
 
     const created = await request.post(`${apiBase}/colleges/specialties`, {
@@ -345,10 +384,13 @@ test.describe.serial('admin and representative CRUD flows', () => {
       headers: authHeaders(repToken),
       data: {
         ...specialtyPayload,
-        name: `${specialtyPayload.name} Edited`,
+        teaching_address: 'г. Уфа, ул. Тестовая, 12',
         commercial_places: 8,
         price_per_year: 55000,
-        avg_score: 4.4
+        avg_score: 4.4,
+        admission_method: 'platform',
+        admission_link: 'https://example.com/apply',
+        admission_instructions: 'Заполните форму на платформе'
       }
     })
     expect(edited.ok(), await edited.text()).toBeTruthy()
@@ -361,7 +403,9 @@ test.describe.serial('admin and representative CRUD flows', () => {
     expect(list.ok(), await list.text()).toBeTruthy()
     const listBody = await list.json()
     expect(listBody.success).toBeTruthy()
-    expect(listBody.data.some((item) => item.id === specialtyId)).toBeTruthy()
+    const createdItem = listBody.data.find((item) => item.id === specialtyId)
+    expect(createdItem).toBeTruthy()
+    expect(createdItem.teaching_address).toBe('г. Уфа, ул. Тестовая, 12')
 
     const removed = await request.delete(`${apiBase}/colleges/specialties/${specialtyId}`, {
       headers: authHeaders(repToken)
@@ -374,6 +418,7 @@ test.describe.serial('admin and representative CRUD flows', () => {
   test('public and auth endpoints keep working after CRUD changes', async ({ request }) => {
     const endpoints = [
       `${apiBase}/sectors`,
+      `${apiBase}/specialties/directory?sector_id=${directorySpecialty.sector.id}`,
       `${apiBase}/specialties?limit=5&page=1`,
       `${apiBase}/colleges?limit=5&page=1`,
       `${apiBase}/colleges/stats`,
@@ -394,5 +439,17 @@ test.describe.serial('admin and representative CRUD flows', () => {
     const meBody = await me.json()
     expect(meBody.success).toBeTruthy()
     expect(meBody.data.user.login).toBe(repLogin)
+  })
+
+  test('wrong password never triggers login timeout', async ({ request }) => {
+    for (let index = 0; index < 7; index += 1) {
+      const response = await request.post(`${apiBase}/auth/login`, {
+        data: { username: repLogin, password: 'wrong-password' }
+      })
+      expect(response.status()).toBe(401)
+      const body = await response.json()
+      expect(body.success).toBeFalsy()
+      expect(body.error).toMatch(/логин|пароль/i)
+    }
   })
 })

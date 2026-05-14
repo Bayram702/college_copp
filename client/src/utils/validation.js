@@ -59,15 +59,30 @@ const isBlank = (value) => value === undefined || value === null || trimText(val
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 const isPhone = (value) => /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(value)
 const isUrl = (value) => /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(value)
+const isMailto = (value) => /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(value)
 const isLogin = (value) => /^[A-Za-z0-9_]{3,50}$/.test(value)
 const isSpecialtyCode = (value) => /^\d{2}\.\d{2}\.\d{2}(\.\d{2})?$/.test(value)
 const hasUnsafeText = (value) => /[<>{}\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(String(value || ''))
 const isCoordinates = (value) => /^-?\d{1,2}(\.\d+)?,\s*-?\d{1,3}(\.\d+)?$/.test(value)
+const admissionMethods = ['offline', 'email', 'platform', 'gosuslugi', 'edu_rb']
 
 export const normalizeUrl = (value) => {
   const cleaned = trimText(value)
   if (!cleaned) return ''
   return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`
+}
+
+const isValidAdmissionLink = (method, value) => {
+  if (!value) return true
+  if (method === 'email') return isEmail(value) || isMailto(value)
+  return isUrl(normalizeUrl(value))
+}
+
+const normalizeAdmissionLink = (method, value) => {
+  const cleaned = normalizeUrlInput(value || '')
+  if (!cleaned) return ''
+  if (method === 'email') return cleaned
+  return normalizeUrl(cleaned)
 }
 
 const intInRange = (value, min = 0, max = 10000) => {
@@ -127,8 +142,6 @@ export const validateCollege = (form) => {
   if (!intInRange(form.commercial_places)) errors.commercial_places = 'Коммерческие места: целое число 0-10000'
   if (!scoreInRange(form.avg_score)) errors.avg_score = 'Средний балл: 0-5, максимум 1 знак после запятой'
   if (!scoreInRange(form.min_score)) errors.min_score = 'Минимальный балл: 0-5, максимум 1 знак после запятой'
-  if (!['admin', 'college_rep'].includes(role)) errors.role = 'Недопустимая роль'
-  if (role === 'college_rep' && form.college_id && Number(form.college_id) <= 0) errors.college_id = 'Выберите корректный колледж'
   if (!['active', 'inactive'].includes(form.status)) errors.status = 'Недопустимый статус'
   validateSafeText(errors, 'professionalitet_cluster', form.professionalitet_cluster, 'Кластер')
   validateTextList(errors, 'opportunities', form.opportunities, 'Возможности')
@@ -136,6 +149,12 @@ export const validateCollege = (form) => {
   validateTextList(errors, 'workshops', form.workshops, 'Мастерские')
   validateTextList(errors, 'professions', form.professions, 'Профессии')
   validateTextList(errors, 'ovz_programs', form.ovz_programs, 'Программы ОВЗ')
+  if (form.admission_method && !admissionMethods.includes(form.admission_method)) errors.admission_method = 'Выберите способ подачи документов'
+  if (form.admission_method === 'offline' && isBlank(form.admission_instructions)) errors.admission_instructions = 'Для очной подачи нужна инструкция'
+  if (['email', 'platform', 'gosuslugi', 'edu_rb'].includes(form.admission_method) && isBlank(form.admission_link)) errors.admission_link = 'Для выбранного способа нужна ссылка'
+  if (form.admission_link && (!isValidAdmissionLink(form.admission_method, form.admission_link) || normalizeAdmissionLink(form.admission_method, form.admission_link).length > 255)) errors.admission_link = 'Укажите корректную ссылку'
+  if (form.admission_instructions && trimText(form.admission_instructions).length > 1000) errors.admission_instructions = 'Инструкция: максимум 1000 символов'
+  validateSafeText(errors, 'admission_instructions', form.admission_instructions, 'Инструкция по подаче документов')
   return errors
 }
 
@@ -150,12 +169,17 @@ export const normalizeCollege = (form) => ({
   social_vk: normalizeUrl(normalizeUrlInput(form.social_vk)),
   social_max: normalizeUrl(normalizeUrlInput(form.social_max)),
   social_other: Array.isArray(form.social_other) ? form.social_other.map((url) => normalizeUrl(normalizeUrlInput(url))).filter(Boolean).slice(0, 20) : [],
+  avg_score: maskScore(form.avg_score),
+  min_score: maskScore(form.min_score),
   professionalitet_cluster: trimText(normalizeTextInput(form.professionalitet_cluster || '', 255)),
   opportunities: normalizeTextArray(form.opportunities),
   employers: normalizeTextArray(form.employers),
   workshops: normalizeTextArray(form.workshops),
   professions: normalizeTextArray(form.professions),
-  ovz_programs: normalizeTextArray(form.ovz_programs)
+  ovz_programs: normalizeTextArray(form.ovz_programs),
+  admission_method: form.admission_method || '',
+  admission_link: normalizeAdmissionLink(form.admission_method, form.admission_link),
+  admission_instructions: normalizeMultilineText(normalizeMultilineInput(form.admission_instructions || '', 1000))
 })
 
 export const validateRepresentative = (form, { editing = false } = {}) => {
@@ -169,6 +193,7 @@ export const validateRepresentative = (form, { editing = false } = {}) => {
   if (!editing && (!form.password || form.password.length < 8 || form.password.length > 100)) errors.password = 'Пароль: от 8 до 100 символов'
   if (editing && form.password && (form.password.length < 8 || form.password.length > 100)) errors.password = 'Новый пароль: от 8 до 100 символов'
   if (!['active', 'inactive'].includes(form.status)) errors.status = 'Недопустимый статус'
+  if (role === 'college_rep' && form.status === 'active' && !form.college_id) errors.college_id = 'Для активного представителя выберите колледж'
   return errors
 }
 
@@ -183,14 +208,16 @@ export const normalizeRepresentative = (form) => {
     phone: trimText(form.phone || ''),
     role,
     college_id: collegeId,
-    status: role === 'college_rep' && !collegeId ? 'inactive' : form.status
+    status: form.status
   }
 }
 
 export const validateSpecialty = (form) => {
   const errors = {}
-  if (isBlank(form.code) || !isSpecialtyCode(trimText(form.code))) errors.code = 'Код: 00.00.00 или 00.00.00.00'
-  if (isBlank(form.name) || trimText(form.name).length < 3 || trimText(form.name).length > 255) errors.name = 'Название: от 3 до 255 символов'
+  if ((!form.specialty_id || Number(form.specialty_id) <= 0) && (isBlank(form.code) || !isSpecialtyCode(trimText(form.code)))) errors.code = 'Код: 00.00.00 или 00.00.00.00'
+  if (!form.sector_id || Number(form.sector_id) <= 0) errors.sector_id = 'Выберите отрасль'
+  if (!form.specialty_id || Number(form.specialty_id) <= 0) errors.specialty_id = 'Выберите специальность'
+  if ((!form.specialty_id || Number(form.specialty_id) <= 0) && (isBlank(form.name) || trimText(form.name).length < 3 || trimText(form.name).length > 255)) errors.name = 'Название: от 3 до 255 символов'
   validateSafeText(errors, 'name', form.name, 'Название')
   if (form.description && trimText(form.description).length > 3000) errors.description = 'Описание: максимум 3000 символов'
   validateSafeText(errors, 'description', form.description, 'Описание')
@@ -200,6 +227,8 @@ export const validateSpecialty = (form) => {
   validateSafeText(errors, 'qualification', form.qualification, 'Квалификация')
   if (form.exams && trimText(form.exams).length > 500) errors.exams = 'Вступительные испытания: максимум 500 символов'
   validateSafeText(errors, 'exams', form.exams, 'Вступительные испытания')
+  if (isBlank(form.teaching_address) || trimText(form.teaching_address).length < 5 || trimText(form.teaching_address).length > 500) errors.teaching_address = 'Адрес преподавания: от 5 до 500 символов'
+  validateSafeText(errors, 'teaching_address', form.teaching_address, 'Адрес преподавания')
   if (!['full-time', 'part-time', 'distance'].includes(form.form)) errors.form = 'Недопустимая форма обучения'
   if (!['9', '11'].includes(String(form.base_education))) errors.base_education = 'Базовое образование: 9 или 11'
   if (!intInRange(form.budget_places)) errors.budget_places = 'Бюджетные места: целое число 0-10000'
@@ -207,17 +236,29 @@ export const validateSpecialty = (form) => {
   if (!intInRange(form.price_per_year, 0, 10000000)) errors.price_per_year = 'Стоимость: целое число от 0'
   if (!scoreInRange(form.avg_score)) errors.avg_score = 'Проходной балл: 0-5, максимум 1 знак после запятой'
   if (!['active', 'inactive', 'draft'].includes(form.status)) errors.status = 'Недопустимый статус'
+  if (form.admission_method && !admissionMethods.includes(form.admission_method)) errors.admission_method = 'Выберите способ подачи документов'
+  if (form.admission_method === 'offline' && isBlank(form.admission_instructions)) errors.admission_instructions = 'Для очной подачи нужна инструкция'
+  if (['email', 'platform', 'gosuslugi', 'edu_rb'].includes(form.admission_method) && isBlank(form.admission_link)) errors.admission_link = 'Для выбранного способа нужна ссылка'
+  if (form.admission_link && (!isValidAdmissionLink(form.admission_method, form.admission_link) || normalizeAdmissionLink(form.admission_method, form.admission_link).length > 255)) errors.admission_link = 'Укажите корректную ссылку'
+  if (form.admission_instructions && trimText(form.admission_instructions).length > 1000) errors.admission_instructions = 'Инструкция: максимум 1000 символов'
+  validateSafeText(errors, 'admission_instructions', form.admission_instructions, 'Инструкция по подаче документов')
   return errors
 }
 
 export const normalizeSpecialty = (form) => ({
   ...form,
+  sector_id: form.sector_id || '',
+  specialty_id: form.specialty_id || '',
   code: maskSpecialtyCode(form.code),
   name: trimText(normalizeTextInput(form.name, 255)),
   description: normalizeMultilineText(normalizeMultilineInput(form.description || '', 3000)),
   qualification: trimText(normalizeTextInput(form.qualification || '', 255)),
   duration: trimText(normalizeTextInput(form.duration || '', 100)),
-  exams: trimText(normalizeTextInput(form.exams || '', 500))
+  exams: trimText(normalizeTextInput(form.exams || '', 500)),
+  teaching_address: trimText(normalizeTextInput(form.teaching_address || '', 500)),
+  admission_method: form.admission_method || '',
+  admission_link: normalizeAdmissionLink(form.admission_method, form.admission_link),
+  admission_instructions: normalizeMultilineText(normalizeMultilineInput(form.admission_instructions || '', 1000))
 })
 
 export const validateAddress = (form) => {

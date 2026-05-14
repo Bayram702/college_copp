@@ -56,6 +56,9 @@
             <i class="fas fa-search"></i>
             <input v-model="userSearch" type="text" placeholder="Поиск пользователей..." @input="debouncedSearch">
           </div>
+          <button class="btn-add" @click="openAddRepModal">
+            <i class="fas fa-user-plus"></i> Добавить представителя
+          </button>
         </div>
 
         <!-- Фильтры -->
@@ -84,7 +87,6 @@
                   <th>Пользователь</th>
                   <th>Логин</th>
                   <th>Email</th>
-                  <th>Роль</th>
                   <th>Статус</th>
                   <th>Последняя активность</th>
                   <th>Действия</th>
@@ -101,9 +103,6 @@
                   </td>
                   <td>{{ user.login }}</td>
                   <td>{{ user.email }}</td>
-                  <td>
-                    <span class="role-badge" :class="user.role.name">{{ getRoleName(user.role.name) }}</span>
-                  </td>
                   <td>
                     <span class="status-badge" :class="getStatusClass(user.status)">{{ getStatusName(user.status) }}</span>
                   </td>
@@ -490,27 +489,6 @@
             <label>Описание</label>
             <textarea v-model="sectorForm.description" class="form-control" rows="4" maxlength="1000" @input="sectorForm.description = normalizeTextInput(sectorForm.description, 1000)"></textarea>
           </div>
-          <div class="form-group">
-            <label>Фотография отрасли</label>
-            <input
-              ref="sectorImageInputRef"
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-              @change="handleSectorImageUpload"
-              style="display: none"
-            >
-            <div class="image-upload" @click="triggerSectorImageUpload">
-              <i :class="sectorImageUploading ? 'fas fa-spinner fa-spin' : 'fas fa-cloud-upload-alt'"></i>
-              <p>{{ sectorImageUploading ? 'Загрузка...' : 'Нажмите для загрузки фотографии' }}</p>
-              <p class="text-small">JPEG, PNG, GIF или WebP до 5 МБ</p>
-            </div>
-            <div v-if="sectorForm.image_url" class="image-preview">
-              <img :src="resolveImageUrl(sectorForm.image_url)" alt="Фото отрасли">
-              <button type="button" class="remove-image-btn" @click="sectorForm.image_url = ''" title="Удалить изображение">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="saving">
               <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i> {{ saving ? 'Сохранение...' : 'Сохранить' }}
@@ -539,7 +517,6 @@ import {
   normalizeUrlInput,
   validateRepresentative
 } from '../utils/validation'
-import { resolveImageUrl } from '../utils/images'
 
 const router = useRouter()
 
@@ -583,10 +560,8 @@ const showCollegeModal = ref(false)
 const collegeForm = ref({ name: '', shortName: '', city: '', description: '', phone: '', email: '', website: '' })
 const collegeErrors = ref({})
 const showSectorModal = ref(false)
-const sectorForm = ref({ name: '', code: '', description: '', image_url: '' })
+const sectorForm = ref({ name: '', code: '', description: '' })
 const sectorErrors = ref({})
-const sectorImageInputRef = ref(null)
-const sectorImageUploading = ref(false)
 
 // Загрузка списка колледжей для модалки
 const loadCollegesForSelect = async () => {
@@ -891,7 +866,7 @@ const filterSectors = () => {
 
 const openSectorModal = () => {
   sectorErrors.value = {}
-  sectorForm.value = { name: '', code: '', description: '', image_url: '' }
+  sectorForm.value = { name: '', code: '', description: '' }
   showSectorModal.value = true
 }
 
@@ -908,50 +883,7 @@ const validateSectorForm = () => {
   const prefixes = getSectorCodePrefixes()
   if (!form.name.trim() || form.name.trim().length < 3) errors.name = 'Название отрасли обязательно, минимум 3 символа'
   if (prefixes.length === 0 || prefixes.some((code) => !/^\d{2}$/.test(code))) errors.code = 'Коды специальностей: две цифры, можно несколько через запятую'
-  if (form.image_url && !isUrl(normalizeUrl(form.image_url))) errors.image_url = 'Укажите корректный URL изображения'
   return errors
-}
-
-const triggerSectorImageUpload = () => {
-  sectorImageInputRef.value?.click()
-}
-
-const handleSectorImageUpload = async (event) => {
-  const file = event.target.files?.[0]
-  if (!file) return
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-  if (!allowedTypes.includes(file.type)) {
-    sectorErrors.value.image_url = 'Разрешены только изображения JPEG, PNG, GIF или WebP'
-    event.target.value = ''
-    return
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    sectorErrors.value.image_url = 'Файл должен быть не больше 5 МБ'
-    event.target.value = ''
-    return
-  }
-
-  sectorImageUploading.value = true
-  try {
-    const token = localStorage.getItem('authToken')
-    const formData = new FormData()
-    formData.append('image', file)
-    const response = await axios.post(`${API_URL}/upload/sector-image`, formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    if (response.data.success) {
-      sectorForm.value.image_url = response.data.data.imageUrl
-      sectorErrors.value.image_url = ''
-    }
-  } catch (e) {
-    sectorErrors.value.image_url = e.response?.data?.error || e.message
-  } finally {
-    sectorImageUploading.value = false
-    event.target.value = ''
-  }
 }
 
 const saveSector = async () => {
@@ -969,8 +901,7 @@ const saveSector = async () => {
       name: sectorForm.value.name.trim(),
       code: sectorForm.value.code.trim(),
       specialtyCodes: getSectorCodePrefixes(),
-      description: sectorForm.value.description.trim(),
-      image_url: sectorForm.value.image_url
+      description: sectorForm.value.description.trim()
     }
     await axios.post(`${API_URL}/sectors`, body, { headers: { Authorization: `Bearer ${token}` } })
     closeSectorModal()

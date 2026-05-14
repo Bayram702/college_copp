@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer')
 const getSmtpConfig = () => ({
   host: (process.env.SMTP_HOST || '').trim(),
   port: parseInt(process.env.SMTP_PORT, 10) || 587,
-  secure: process.env.SMTP_SECURE === 'true' || String(process.env.SMTP_PORT || '').trim() === '465',
+  secure: ['true', 'ssl'].includes(String(process.env.SMTP_SECURE || '').trim().toLowerCase()) || String(process.env.SMTP_PORT || '').trim() === '465',
   user: (process.env.SMTP_USER || '').trim(),
   pass: (process.env.SMTP_PASS || '').trim(),
   from: (process.env.SMTP_FROM || process.env.SMTP_USER || '').trim()

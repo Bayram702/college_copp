@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { specialtyDirectory } = require('../catalog/specialtyDirectory')
 
 const normalizeSectors = (sectors) => {
   if (!Array.isArray(sectors)) return [];
@@ -8,6 +9,58 @@ const normalizeSectors = (sectors) => {
     .filter(Boolean)
     .map(sec => ({ id: sec.id, name: sec.name, code: sec.code }));
 };
+
+const parseJsonArray = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+router.get('/directory', async (req, res) => {
+  try {
+    const { sector_id } = req.query
+    if (!sector_id) {
+      return res.status(400).json({ success: false, error: 'Укажите отрасль' })
+    }
+
+    const result = await db.query(
+      `
+        SELECT
+          MIN(s.id) AS id,
+          s.code,
+          s.name,
+          MAX(COALESCE(NULLIF(s.qualification, ''), ref.qualification, '')) AS qualification,
+          MAX(COALESCE(NULLIF(s.description, ''), '')) AS description
+        FROM specialty_sectors ss
+        JOIN specialties s ON s.id = ss.specialty_id
+        JOIN sectors sec ON sec.id = ss.sector_id
+        LEFT JOIN (
+          SELECT *
+          FROM json_to_recordset($2::json) AS ref(code text, name text, qualification text, sector_code text)
+        ) ref ON ref.code = s.code
+        WHERE ss.sector_id = $1
+          AND s.status = 'active'
+          AND s.code LIKE (LEFT(sec.code, 2) || '.%')
+        GROUP BY s.code, s.name
+        ORDER BY s.code, s.name
+      `,
+      [sector_id, JSON.stringify(specialtyDirectory)]
+    )
+
+    res.json({ success: true, data: result.rows })
+  } catch (error) {
+    console.error('Error fetching directory specialties:', error)
+    res.status(500).json({ success: false, error: 'Ошибка сервера' })
+  }
+})
 
 router.get('/', async (req, res) => {
   try {
@@ -61,19 +114,16 @@ router.get('/', async (req, res) => {
       params.push(searchParam, searchParam);
     }
 
-    const havingClause = `HAVING COUNT(DISTINCT cs.college_id) FILTER (WHERE cs.is_active = true) > 0`;
-
     const countQuery = `
       SELECT COUNT(*) FROM (
         ${query.replace(/SELECT[\s\S]*?FROM specialties s/, 'SELECT s.code, s.name FROM specialties s')}
         GROUP BY s.code, s.name
-        ${havingClause}
       ) grouped_specialties
     `;
     const countResult = await db.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count, 10);
 
-    query += ` GROUP BY s.code, s.name ${havingClause} ORDER BY s.name LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    query += ` GROUP BY s.code, s.name ORDER BY s.name LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
     params.push(limitNum, offset);
 
     const result = await db.query(query, params);
@@ -131,7 +181,6 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN college_specialties cs ON s.id = cs.specialty_id AND cs.is_active = true
         WHERE s.status = 'active'
         GROUP BY s.code, s.name
-        HAVING COUNT(DISTINCT cs.college_id) FILTER (WHERE cs.is_active = true) > 0
       ) grouped_specialties
     `);
 
@@ -188,11 +237,16 @@ router.get('/:id', async (req, res) => {
               'commercial_places', cs2.commercial_places,
               'price_per_year', cs2.price_per_year,
               'avg_score', cs2.avg_score,
+              'teaching_address', cs2.teaching_address,
+              'admission_method', COALESCE(NULLIF(cs2.admission_method, ''), NULLIF(c.admission_method, '')),
+              'admission_link', COALESCE(NULLIF(cs2.admission_link, ''), NULLIF(c.admission_link, '')),
+              'admission_instructions', COALESCE(NULLIF(cs2.admission_instructions, ''), NULLIF(c.admission_instructions, '')),
               'is_professionalitet', c.is_professionalitet,
               'logo_image_url', c.logo_image_url,
               'phone', c.phone,
               'email', c.email,
-              'website', c.website
+              'website', c.website,
+              'professions', c.professions
             )
             ORDER BY c.name
           )
@@ -218,6 +272,9 @@ router.get('/:id', async (req, res) => {
     const specialty = result.rows[0];
     specialty.sectors = normalizeSectors(specialty.sectors);
     specialty.colleges = specialty.colleges || [];
+    specialty.professions = Array.from(new Set(
+      specialty.colleges.flatMap((college) => parseJsonArray(college.professions))
+    ));
 
     res.json({ success: true, data: specialty });
   } catch (error) {

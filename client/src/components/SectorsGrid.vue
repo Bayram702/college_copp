@@ -15,7 +15,6 @@
           :to="sector.link"
           class="sector-card"
         >
-          <img :src="sector.image" :alt="sector.title" class="sector-image">
           <div class="sector-content">
             <h3>{{ sector.title }}</h3>
             <p>{{ sector.description }}</p>
@@ -39,7 +38,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { apiPath } from '../utils/api'
-import { resolveImageUrl } from '../utils/images'
 
 const sectors = ref([])
 const loading = ref(true)
@@ -55,7 +53,6 @@ const loadSectors = async () => {
         description: sector.description,
         colleges: sector.colleges_count,
         programs: sector.programs_count,
-        image: resolveImageUrl(sector.image_url, '/default-sector.jpg'),
         link: { path: '/sector', query: { sector_id: String(sector.id) } }
       }))
     }

@@ -4,6 +4,7 @@ const SPECIALTY_STATUS_VALUES = ['active', 'inactive', 'draft']
 const EDUCATION_FORMS = ['full-time', 'part-time', 'distance']
 const BASE_EDUCATION_VALUES = ['9', '11']
 const ADDRESS_TYPE_VALUES = ['legal', 'actual', 'educational', 'branch', 'other']
+const ADMISSION_METHOD_VALUES = ['offline', 'email', 'platform', 'gosuslugi', 'edu_rb']
 
 const trim = (value) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value)
 const trimMultiline = (value) => (typeof value === 'string'
@@ -23,6 +24,20 @@ const normalizeUrl = (value) => {
   if (!cleaned) return ''
   if (/^https?:\/\//i.test(cleaned)) return cleaned
   return `https://${cleaned}`
+}
+
+const isMailto = (value) => /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(value)
+
+const isValidAdmissionLink = (method, value) => {
+  if (!value) return true
+  if (method === 'email') return isEmail(value) || isMailto(value)
+  return isUrl(normalizeUrl(value))
+}
+
+const normalizeAdmissionLink = (method, value) => {
+  if (!value) return ''
+  if (method === 'email') return value
+  return normalizeUrl(value)
 }
 
 const parseInteger = (value) => {
@@ -112,6 +127,7 @@ const validationResponse = (res, errors) => {
 
 const validateCollegePayload = (payload) => {
   const errors = {}
+  const admission = normalizeAdmissionPayload(payload, errors)
   const data = {
     name: trim(cleanText(payload.name, 255)),
     short_name: trim(payload.short_name ?? payload.shortName ?? ''),
@@ -134,7 +150,10 @@ const validateCollegePayload = (payload) => {
     employers: normalizeTextArray(payload.employers),
     workshops: normalizeTextArray(payload.workshops),
     professions: normalizeTextArray(payload.professions),
-    ovz_programs: normalizeTextArray(payload.ovz_programs)
+    ovz_programs: normalizeTextArray(payload.ovz_programs),
+    admission_method: admission.admission_method,
+    admission_link: admission.admission_link,
+    admission_instructions: admission.admission_instructions
   }
 
   if (isBlank(data.name)) errors.name = 'Название колледжа обязательно'
@@ -179,7 +198,6 @@ const validateRepresentativePayload = (payload, { create = true } = {}) => {
     data.college_id = Number(data.college_id)
   }
   if (data.role === 'admin') data.college_id = null
-  if (data.role === 'college_rep' && data.college_id === null) data.status = 'inactive'
 
   if (isBlank(data.name)) errors.name = 'ФИО обязательно'
   else addLengthError(errors, 'name', data.name, 'ФИО', { min: 2, max: 255 })
@@ -196,15 +214,19 @@ const validateRepresentativePayload = (payload, { create = true } = {}) => {
   if (!['admin', 'college_rep'].includes(data.role)) errors.role = 'Недопустимая роль'
   if (data.college_id !== null && (!Number.isInteger(data.college_id) || data.college_id <= 0)) errors.college_id = 'Выберите корректный колледж'
   if (!STATUS_VALUES.includes(data.status)) errors.status = 'Недопустимый статус пользователя'
+  if (data.role === 'college_rep' && data.status === 'active' && data.college_id === null) {
+    errors.college_id = 'Для активного представителя выберите колледж'
+  }
 
   return { data, errors }
 }
 
 const validateSpecialtyPayload = (payload) => {
   const errors = {}
+  const admission = normalizeAdmissionPayload(payload, errors)
   const data = {
-    name: trim(cleanText(payload.name, 255)),
-    code: trim(payload.code),
+    name: trim(cleanText(payload.name ?? '', 255)),
+    code: trim(payload.code ?? ''),
     description: trimMultiline(cleanMultiline(payload.description ?? '', 3000)),
     qualification: trim(cleanText(payload.qualification ?? '', 255)),
     duration: trim(cleanText(payload.duration ?? '', 100)),
@@ -215,13 +237,23 @@ const validateSpecialtyPayload = (payload) => {
     commercial_places: validateIntegerRange(errors, 'commercial_places', payload.commercial_places, 'Коммерческие места'),
     price_per_year: validateIntegerRange(errors, 'price_per_year', payload.price_per_year, 'Стоимость обучения', 0, 10000000),
     avg_score: validateScore(errors, 'avg_score', payload.avg_score, 'Проходной балл'),
-    status: trim(payload.status || 'active')
+    status: trim(payload.status || 'active'),
+    specialty_id: payload.specialty_id === '' || payload.specialty_id === undefined || payload.specialty_id === null ? null : Number(payload.specialty_id),
+    sector_id: payload.sector_id === '' || payload.sector_id === undefined || payload.sector_id === null ? null : Number(payload.sector_id),
+    teaching_address: trim(cleanText(payload.teaching_address ?? '', 500)),
+    admission_method: admission.admission_method,
+    admission_link: admission.admission_link,
+    admission_instructions: admission.admission_instructions
   }
 
-  if (isBlank(data.code) || !isSpecialtyCode(data.code)) errors.code = 'Код специальности должен быть в формате 00.00.00 или 00.00.00.00'
-  if (isBlank(data.name)) errors.name = 'Название специальности обязательно'
-  else addLengthError(errors, 'name', data.name, 'Название специальности', { min: 3, max: 255 })
-  validateSafeText(errors, 'name', payload.name, 'Название специальности')
+  if (data.specialty_id !== null && (!Number.isInteger(data.specialty_id) || data.specialty_id <= 0)) errors.specialty_id = 'Выберите специальность из справочника'
+  if (data.sector_id !== null && (!Number.isInteger(data.sector_id) || data.sector_id <= 0)) errors.sector_id = 'Выберите отрасль'
+  if (data.specialty_id === null && (isBlank(data.code) || !isSpecialtyCode(data.code))) errors.code = 'Код специальности должен быть в формате 00.00.00 или 00.00.00.00'
+  if (data.specialty_id === null) {
+    if (isBlank(data.name)) errors.name = 'Название специальности обязательно'
+    else addLengthError(errors, 'name', data.name, 'Название специальности', { min: 3, max: 255 })
+    validateSafeText(errors, 'name', payload.name, 'Название специальности')
+  }
   addLengthError(errors, 'description', data.description, 'Описание', { max: 3000 })
   validateSafeText(errors, 'description', payload.description, 'Описание')
   addLengthError(errors, 'duration', data.duration, 'Срок обучения', { max: 100 })
@@ -230,6 +262,9 @@ const validateSpecialtyPayload = (payload) => {
   validateSafeText(errors, 'qualification', payload.qualification, 'Квалификация')
   addLengthError(errors, 'exams', data.exams, 'Вступительные испытания', { max: 500 })
   validateSafeText(errors, 'exams', payload.exams, 'Вступительные испытания')
+  if (isBlank(data.teaching_address)) errors.teaching_address = 'Адрес преподавания обязателен'
+  else addLengthError(errors, 'teaching_address', data.teaching_address, 'Адрес преподавания', { min: 5, max: 500 })
+  validateSafeText(errors, 'teaching_address', payload.teaching_address, 'Адрес преподавания')
   if (!EDUCATION_FORMS.includes(data.form)) errors.form = 'Недопустимая форма обучения'
   if (!BASE_EDUCATION_VALUES.includes(data.base_education)) errors.base_education = 'Базовое образование должно быть 9 или 11'
   if (!SPECIALTY_STATUS_VALUES.includes(data.status)) errors.status = 'Недопустимый статус специальности'
@@ -275,6 +310,52 @@ const validateAddressPayload = (payload) => {
   validateSafeText(errors, 'contact_person', payload.contact_person, 'Контактное лицо')
 
   return { data, errors }
+}
+
+const normalizeAdmissionMethod = (value) => trim(String(value || ''))
+
+const normalizeAdmissionPayload = (payload, errors, prefix = '') => {
+  const field = (name) => (prefix ? `${prefix}${name}` : name)
+  const method = normalizeAdmissionMethod(payload[field('admission_method')])
+  const link = trim(cleanUrl(payload[field('admission_link')] ?? ''))
+  const instructions = trimMultiline(cleanMultiline(payload[field('admission_instructions')] ?? '', 1000))
+
+  if (!method) {
+    return {
+      admission_method: '',
+      admission_link: '',
+      admission_instructions: ''
+    }
+  }
+
+  if (!ADMISSION_METHOD_VALUES.includes(method)) {
+    errors[field('admission_method')] = 'Недопустимый способ подачи документов'
+  }
+
+  const normalizedLink = normalizeAdmissionLink(method, link)
+
+  if (link && (!isValidAdmissionLink(method, link) || normalizedLink.length > 255)) {
+    errors[field('admission_link')] = 'Укажите корректную ссылку для подачи документов'
+  }
+
+  if (instructions.length > 1000) {
+    errors[field('admission_instructions')] = 'Инструкция: максимум 1000 символов'
+  }
+  validateSafeText(errors, field('admission_instructions'), payload[field('admission_instructions')], 'Инструкция по подаче документов')
+
+  if (method === 'offline' && isBlank(instructions)) {
+    errors[field('admission_instructions')] = 'Для очной подачи укажите краткую инструкцию'
+  }
+
+  if (['email', 'platform', 'gosuslugi', 'edu_rb'].includes(method) && isBlank(link)) {
+    errors[field('admission_link')] = 'Для выбранного способа подачи нужна ссылка или адрес'
+  }
+
+  return {
+    admission_method: method,
+    admission_link: normalizedLink,
+    admission_instructions: instructions
+  }
 }
 
 module.exports = {

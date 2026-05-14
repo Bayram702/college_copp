@@ -188,11 +188,12 @@ const loadSectors = async () => {
     if (result.success) {
       sectors.value = [
         { id: 'all', name: 'Все отрасли', icon: 'fas fa-th-large', code: '' },
-        ...result.data.map(sector => ({
-          id: String(sector.id),
-          name: sector.name,
-          code: sector.code
-        }))
+        ...result.data
+          .map(sector => ({
+            id: String(sector.id),
+            name: sector.name,
+            code: sector.code
+          }))
       ]
     }
   } catch (err) {

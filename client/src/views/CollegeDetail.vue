@@ -253,6 +253,7 @@
               :rel="item.target === '_blank' ? 'noopener noreferrer' : null"
               class="source-card"
             >
+              <i :class="item.icon" class="source-icon"></i>
               <span class="source-label">{{ item.label }}</span>
               <span class="source-url">{{ item.value }}</span>
             </a>
@@ -304,6 +305,19 @@ const normalizeSocialOther = (value) => {
   return []
 }
 
+const parseList = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) return value.filter(Boolean)
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed.filter(Boolean)
+    } catch {}
+    return value.split('\n').map(item => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
 const collegeContactItems = computed(() => {
   if (!college.value) return []
 
@@ -311,6 +325,7 @@ const collegeContactItems = computed(() => {
     {
       key: 'phone',
       label: 'Телефон',
+      icon: 'fas fa-phone',
       value: college.value.phone,
       href: college.value.phone ? `tel:${college.value.phone}` : null,
       target: '_self'
@@ -318,6 +333,7 @@ const collegeContactItems = computed(() => {
     {
       key: 'email',
       label: 'Электронная почта',
+      icon: 'fas fa-envelope',
       value: college.value.email,
       href: college.value.email ? `mailto:${college.value.email}` : null,
       target: '_self'
@@ -325,13 +341,23 @@ const collegeContactItems = computed(() => {
     {
       key: 'website',
       label: 'Сайт колледжа',
+      icon: 'fas fa-globe',
       value: college.value.website,
       href: college.value.website,
       target: '_blank'
     },
     {
+      key: 'admission_link',
+      label: 'Сайт приемной комиссии',
+      icon: 'fas fa-file-signature',
+      value: college.value.admission_link,
+      href: college.value.admission_link,
+      target: '_blank'
+    },
+    {
       key: 'social_vk',
       label: 'ВКонтакте',
+      icon: 'fab fa-vk',
       value: college.value.social_vk,
       href: college.value.social_vk,
       target: '_blank'
@@ -339,6 +365,7 @@ const collegeContactItems = computed(() => {
     {
       key: 'social_max',
       label: 'MAX',
+      icon: 'fas fa-comment-dots',
       value: college.value.social_max,
       href: college.value.social_max,
       target: '_blank'
@@ -347,7 +374,8 @@ const collegeContactItems = computed(() => {
 
   const otherSources = normalizeSocialOther(college.value.social_other).map((url, index) => ({
     key: `social_other_${index}`,
-    label: `Соцсеть ${index + 1}`,
+    label: `Источник ${index + 1}`,
+    icon: 'fas fa-link',
     value: url,
     href: url,
     target: '_blank'
@@ -367,13 +395,11 @@ const fetchCollege = async () => {
 
     if (response.data.success) {
       college.value = response.data.data
-      // Загружаем возможности и карьеры из данных колледжа
-      if (response.data.data.opportunities) {
-        opportunities.value = response.data.data.opportunities
-      }
-      if (response.data.data.employers) {
-        careers.value = response.data.data.employers
-      }
+      college.value.employers = parseList(college.value.employers)
+      college.value.workshops = parseList(college.value.workshops)
+      college.value.ovzPrograms = parseList(college.value.ovzPrograms || college.value.ovz_programs)
+      opportunities.value = parseList(response.data.data.opportunities)
+      careers.value = parseList(response.data.data.professions)
       
       // Инициализируем карту после загрузки данных
       if (response.data.data.campuses && response.data.data.campuses.length > 0) {
@@ -789,6 +815,18 @@ onUnmounted(() => {
   color: inherit;
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.source-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: var(--primary-blue);
+  font-size: 1.05rem;
 }
 
 .source-card:hover {

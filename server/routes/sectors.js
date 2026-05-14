@@ -170,7 +170,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', requireAdmin, async (req, res) => {
   const client = await db.connect();
   try {
-    const { name, description, image_url } = req.body;
+    const { name, description } = req.body;
     const specialtyPrefixes = normalizeSpecialtyPrefixes(req.body.specialtyCodes ?? req.body.code);
     const code = specialtyPrefixes.join(',');
 
@@ -185,10 +185,10 @@ router.post('/', requireAdmin, async (req, res) => {
     const result = await client.query(
       `
         INSERT INTO sectors (name, code, description, image_url, sort_order)
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1, $2, $3, NULL, $4)
         RETURNING *
       `,
-      [name, code, description || '', image_url || null, sortOrder]
+      [name, code, description || '', sortOrder]
     );
 
     const linkedCount = await linkSpecialtiesByPrefixes(client, result.rows[0].id, specialtyPrefixes);
@@ -208,7 +208,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
   const client = await db.connect();
   try {
     const { id } = req.params;
-    const { name, description, image_url, sort_order, is_active } = req.body;
+    const { name, description, sort_order, is_active } = req.body;
     const specialtyPrefixes = req.body.specialtyCodes !== undefined || req.body.code !== undefined
       ? normalizeSpecialtyPrefixes(req.body.specialtyCodes ?? req.body.code)
       : null;
@@ -221,7 +221,6 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (name) { updates.push(`name = $${paramIndex++}`); params.push(name); }
     if (code) { updates.push(`code = $${paramIndex++}`); params.push(code); }
     if (description !== undefined) { updates.push(`description = $${paramIndex++}`); params.push(description); }
-    if (image_url !== undefined) { updates.push(`image_url = $${paramIndex++}`); params.push(image_url); }
     if (sort_order !== undefined) { updates.push(`sort_order = $${paramIndex++}`); params.push(sort_order); }
     if (is_active !== undefined) { updates.push(`is_active = $${paramIndex++}`); params.push(is_active); }
 

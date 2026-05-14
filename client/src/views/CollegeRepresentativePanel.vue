@@ -94,6 +94,10 @@
         <!-- Секция 2: Статистика приема -->
         <div class="section">
           <h2 class="section-title"><i class="fas fa-chart-bar"></i> Статистика приема 2025</h2>
+          <p class="auto-calculated-note">
+            <i class="fas fa-calculator"></i>
+            Количество мест рассчитываются автоматически по добавленным специальностям.
+          </p>
           
           <div class="stats-grid">
             <div class="form-group">
@@ -158,7 +162,7 @@
         
         <!-- Секция 3: Контактная информация -->
         <div class="section">
-          <h2 class="section-title"><i class="fas fa-address-book"></i> Контактная информация</h2>
+          <h2 class="section-title"><i class="fas fa-address-book"></i> Контактная информация приемной комиссии</h2>
           
           <div class="settings-grid">
             <div class="form-group">
@@ -177,7 +181,7 @@
             </div>
             
             <div class="form-group">
-              <label for="college-email">Электронная почта <span class="required">*</span></label>
+              <label for="college-email">Электронная почта приемной комиссии <span class="required">*</span></label>
               <input 
                 v-model="collegeData.email" 
                 type="email" 
@@ -206,7 +210,21 @@
               >
               <small v-if="collegeErrors.website" class="field-error">{{ collegeErrors.website }}</small>
             </div>
-            
+
+            <div class="form-group">
+              <label for="college-admission-link">Сайт приемной комиссии</label>
+              <input
+                v-model="collegeData.admission_link"
+                type="url"
+                id="college-admission-link"
+                class="form-control"
+                :class="{ invalid: collegeErrors.admission_link }"
+                maxlength="255"
+                placeholder="https://example.ru/priem"
+                @input="collegeData.admission_link = normalizeUrlInput(collegeData.admission_link)"
+              >
+              <small v-if="collegeErrors.admission_link" class="field-error">{{ collegeErrors.admission_link }}</small>
+            </div>
           </div>
           
           <div class="form-group">
@@ -251,7 +269,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Секция 4: Адреса расположения -->
         <div class="section">
           <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Адреса расположения</h2>
@@ -525,14 +543,24 @@
           <div class="settings-grid">
             <div class="form-group">
               <label>Название специальности <span class="required">*</span></label>
-              <input v-model="specialityForm.name" type="text" class="form-control" :class="{ invalid: specialityErrors.name }" maxlength="255" @input="specialityForm.name = normalizeTextInput(specialityForm.name, 255)" required>
-              <small v-if="specialityErrors.name" class="field-error">{{ specialityErrors.name }}</small>
+              <select v-model="specialityForm.sector_id" class="form-control" :class="{ invalid: specialityErrors.sector_id }" :disabled="!!editingSpeciality" @change="loadDirectorySpecialties(specialityForm.sector_id); specialityForm.specialty_id = ''; specialityForm.name = ''; specialityForm.code = ''" required>
+                <option value="">Выберите отрасль</option>
+                <option v-for="sector in directorySectors" :key="sector.id" :value="String(sector.id)">
+                  {{ sector.code }} — {{ sector.name }}
+                </option>
+              </select>
+              <small v-if="specialityErrors.sector_id" class="field-error">{{ specialityErrors.sector_id }}</small>
             </div>
             
             <div class="form-group">
               <label>Код специальности <span class="required">*</span></label>
-              <input v-model="specialityForm.code" type="text" class="form-control" :class="{ invalid: specialityErrors.code }" placeholder="00.00.00" maxlength="11" @input="specialityForm.code = maskSpecialtyCode(specialityForm.code)" required>
-              <small v-if="specialityErrors.code" class="field-error">{{ specialityErrors.code }}</small>
+              <select v-model="specialityForm.specialty_id" class="form-control" :class="{ invalid: specialityErrors.specialty_id }" :disabled="!specialityForm.sector_id || !!editingSpeciality" @change="syncDirectorySpecialtyDetails" required>
+                <option value="">Выберите специальность</option>
+                <option v-for="item in directorySpecialties" :key="item.id" :value="String(item.id)">
+                  {{ item.code }} — {{ item.name }}
+                </option>
+              </select>
+              <small v-if="specialityErrors.specialty_id" class="field-error">{{ specialityErrors.specialty_id }}</small>
             </div>
           </div>
           
@@ -589,6 +617,43 @@
             <label>Описание специальности</label>
             <textarea v-model="specialityForm.description" class="form-control" :class="{ invalid: specialityErrors.description }" rows="4" maxlength="3000" @input="specialityForm.description = normalizeMultilineInput(specialityForm.description, 3000)"></textarea>
             <small v-if="specialityErrors.description" class="field-error">{{ specialityErrors.description }}</small>
+          </div>
+
+          <div class="form-group">
+            <label>Адрес преподавания <span class="required">*</span></label>
+            <select v-model="specialityForm.teaching_address" class="form-control" :class="{ invalid: specialityErrors.teaching_address }" required>
+              <option value="" disabled>{{ addresses.length ? 'Выберите адрес' : 'Сначала добавьте адрес колледжа' }}</option>
+              <option v-for="item in teachingAddressOptions" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </option>
+            </select>
+            <small v-if="specialityErrors.teaching_address" class="field-error">{{ specialityErrors.teaching_address }}</small>
+          </div>
+
+          <div class="settings-grid">
+            <div class="form-group">
+              <label>Способ подачи документов</label>
+              <select v-model="specialityForm.admission_method" class="form-control" :class="{ invalid: specialityErrors.admission_method }">
+                <option value="">Использовать настройки колледжа</option>
+                <option value="offline">Очно</option>
+                <option value="email">Онлайн через электронную почту</option>
+                <option value="platform">Своя платформа</option>
+                <option value="gosuslugi">ГосУслуги</option>
+                <option value="edu_rb">https://college.edu-rb.ru/</option>
+              </select>
+              <small v-if="specialityErrors.admission_method" class="field-error">{{ specialityErrors.admission_method }}</small>
+            </div>
+            <div class="form-group">
+              <label>Ссылка или адрес подачи</label>
+              <input v-model="specialityForm.admission_link" type="text" class="form-control" :class="{ invalid: specialityErrors.admission_link }" maxlength="255" @input="specialityForm.admission_link = normalizeUrlInput(specialityForm.admission_link)">
+              <small v-if="specialityErrors.admission_link" class="field-error">{{ specialityErrors.admission_link }}</small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Краткая инструкция по подаче</label>
+            <textarea v-model="specialityForm.admission_instructions" class="form-control" :class="{ invalid: specialityErrors.admission_instructions }" rows="3" maxlength="1000" @input="specialityForm.admission_instructions = normalizeMultilineInput(specialityForm.admission_instructions, 1000)"></textarea>
+            <small v-if="specialityErrors.admission_instructions" class="field-error">{{ specialityErrors.admission_instructions }}</small>
           </div>
           
           <div class="form-group">
@@ -747,6 +812,9 @@ const collegeData = ref({
   social_vk: '',
   social_max: '',
   social_other: [],
+  admission_method: '',
+  admission_link: '',
+  admission_instructions: '',
   logo_image_url: '',
   is_professionalitet: false,
   professionalitet_cluster: '',
@@ -760,6 +828,8 @@ const collegeData = ref({
 // Специальности (загружаются из БД)
 const specialities = ref([])
 const specialitySearch = ref('')
+const directorySectors = ref([])
+const directorySpecialties = ref([])
 
 // Адреса (загружаются из БД)
 const addresses = ref([])
@@ -771,9 +841,10 @@ const showAddressModal = ref(false)
 const editingAddress = ref(null)
 
 const specialityForm = ref({
-  id: '', name: '', code: '', duration: '', base_education: '9', form: 'full-time',
+  id: '', sector_id: '', specialty_id: '', name: '', code: '', duration: '', base_education: '9', form: 'full-time',
   budget_places: 0, commercial_places: 0, price_per_year: 0, exams: '', avg_score: 0,
-  description: '', qualification: '', status: 'active'
+  description: '', qualification: '', status: 'active', teaching_address: '',
+  admission_method: '', admission_link: '', admission_instructions: ''
 })
 
 const addressForm = ref({
@@ -821,6 +892,28 @@ const socialOtherText = computed({
 
 const filteredSpecialities = computed(() => specialities.value)
 
+const formatTeachingAddressLabel = (address) => {
+  const name = address.name?.trim()
+  const value = address.address?.trim()
+  return name && value ? `${name} — ${value}` : (value || name || '')
+}
+
+const teachingAddressOptions = computed(() => {
+  const options = addresses.value
+    .filter((address) => address.address?.trim())
+    .map((address) => ({
+      value: address.address.trim(),
+      label: formatTeachingAddressLabel(address)
+    }))
+
+  const current = specialityForm.value.teaching_address?.trim()
+  if (current && !options.some((item) => item.value === current)) {
+    options.push({ value: current, label: current })
+  }
+
+  return options
+})
+
 const getToken = () => localStorage.getItem('authToken')
 
 const showAlert = (msg, type = 'info') => {
@@ -834,6 +927,30 @@ const parseJson = (val) => {
   if (!val) return []
   if (typeof val === 'string') { try { return JSON.parse(val) } catch { return [] } }
   return val
+}
+
+const loadDirectorySectors = async () => {
+  const response = await fetch(`${API_URL}/sectors`)
+  const result = await response.json()
+  if (result.success) directorySectors.value = result.data
+}
+
+const loadDirectorySpecialties = async (sectorId) => {
+  if (!sectorId) {
+    directorySpecialties.value = []
+    return
+  }
+  const response = await fetch(`${API_URL}/specialties/directory?sector_id=${sectorId}`)
+  const result = await response.json()
+  directorySpecialties.value = result.success ? result.data : []
+}
+
+const syncDirectorySpecialtyDetails = () => {
+  const selected = directorySpecialties.value.find((item) => String(item.id) === String(specialityForm.value.specialty_id))
+  if (!selected) return
+  specialityForm.value.name = selected.name || ''
+  specialityForm.value.code = selected.code || ''
+  specialityForm.value.qualification = selected.qualification || specialityForm.value.qualification || ''
 }
 
 const loadCollegeData = async () => {
@@ -869,6 +986,9 @@ const loadCollegeData = async () => {
       website: c.website || '',
       social_vk: c.social_vk || '', social_max: c.social_max || '',
       social_other: parseJson(c.social_other),
+      admission_method: c.admission_method || '',
+      admission_link: c.admission_link || '',
+      admission_instructions: c.admission_instructions || '',
       logo_image_url: c.logo_image_url || '',
       is_professionalitet: c.is_professionalitet || false,
       professionalitet_cluster: c.professionalitet_cluster || '',
@@ -936,6 +1056,9 @@ const saveCollegeData = async () => {
       social_vk: collegeData.value.social_vk,
       social_max: collegeData.value.social_max,
       social_other: collegeData.value.social_other,
+      admission_method: collegeData.value.admission_method,
+      admission_link: collegeData.value.admission_link,
+      admission_instructions: collegeData.value.admission_instructions,
       avg_score: collegeData.value.avg_score,
       min_score: collegeData.value.min_score,
       is_professionalitet: collegeData.value.is_professionalitet,
@@ -1035,14 +1158,26 @@ const openSpecialityModal = (spec = null) => {
   specialityErrors.value = {}
   editingSpeciality.value = spec
   if (spec) {
-    specialityForm.value = { ...spec }
+    specialityForm.value = {
+      ...spec,
+      sector_id: spec.sectors?.[0]?.id ? String(spec.sectors[0].id) : '',
+      specialty_id: String(spec.id),
+      teaching_address: spec.teaching_address || '',
+      admission_method: spec.admission_method || '',
+      admission_link: spec.admission_link || '',
+      admission_instructions: spec.admission_instructions || ''
+    }
+    loadDirectorySpecialties(specialityForm.value.sector_id)
   } else {
     specialityForm.value = {
-      id: '', name: '', code: '', duration: '', base_education: '9', form: 'full-time',
+      id: '', sector_id: '', specialty_id: '', name: '', code: '', duration: '', base_education: '9', form: 'full-time',
       budget_places: 0, commercial_places: 0, price_per_year: 0, exams: '', avg_score: 0,
-      description: '', qualification: '', status: 'active'
+      description: '', qualification: '', status: 'active', teaching_address: '',
+      admission_method: '', admission_link: '', admission_instructions: ''
     }
+    directorySpecialties.value = []
   }
+  if (directorySectors.value.length === 0) loadDirectorySectors()
   showSpecialityModal.value = true
 }
 const closeSpecialityModal = () => { showSpecialityModal.value = false; specialityErrors.value = {} }
@@ -1051,8 +1186,8 @@ const saveSpeciality = async () => {
   specialityErrors.value = validateSpecialty(specialityForm.value)
   if (Object.keys(specialityErrors.value).length) return showAlert(firstError(specialityErrors.value), 'error')
   specialityForm.value = normalizeSpecialty(specialityForm.value)
-  if (!specialityForm.value.name?.trim()) return showAlert('Название специальности обязательно', 'error')
-  if (!specialityForm.value.code?.trim()) return showAlert('Код специальности обязателен', 'error')
+  if (!specialityForm.value.specialty_id) return showAlert('Выберите специальность из справочника', 'error')
+  if (!specialityForm.value.teaching_address?.trim()) return showAlert('Адрес преподавания обязателен', 'error')
 
   saving.value = true
   try {
@@ -1205,7 +1340,10 @@ const logout = () => {
   }
 }
 
-onMounted(() => { loadCollegeData() })
+onMounted(() => {
+  loadDirectorySectors().catch((error) => console.warn('Не удалось загрузить отрасли:', error))
+  loadCollegeData()
+})
 </script>
 
 <style scoped>
@@ -1290,6 +1428,18 @@ onMounted(() => { loadCollegeData() })
 .form-hint { color: #94a3b8; font-size: 0.8rem; margin-top: 4px; display: block; }
 .form-control.invalid { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08); }
 .field-error { color: #dc2626; font-size: 0.8rem; margin-top: 4px; display: block; }
+.auto-calculated-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 18px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(0, 84, 166, 0.08);
+  color: #0054A6;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
 .checkbox-label {
   display: flex;
   align-items: center;

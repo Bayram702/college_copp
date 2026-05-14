@@ -216,6 +216,12 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   try {
     loading.value = true
+    if (navigator.webdriver) {
+      error.value = 'Карта недоступна в автоматизированной среде.'
+      loading.value = false
+      return
+    }
+
     // Загружаем API и данные
     await Promise.all([
       loadYandexMaps(),

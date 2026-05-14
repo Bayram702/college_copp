@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "import:colleges": "node scripts/import-colleges-from-xlsx.js"
   },
   "keywords": [],
   "author": "",

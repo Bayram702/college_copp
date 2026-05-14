@@ -35,8 +35,8 @@ router.get('/', async (req, res) => {
         SELECT
           SUM(COALESCE(cs.budget_places, 0)) as budget_places,
           SUM(COALESCE(cs.commercial_places, 0)) as commercial_places,
-          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 2) as avg_score,
-          MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0)) as min_score
+          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as avg_score,
+          ROUND(MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as min_score
         FROM college_specialties cs
         JOIN specialties s ON cs.specialty_id = s.id
         WHERE cs.college_id = c.id
@@ -113,8 +113,8 @@ router.get('/', async (req, res) => {
         SELECT
           SUM(COALESCE(cs.budget_places, 0)) as budget_places,
           SUM(COALESCE(cs.commercial_places, 0)) as commercial_places,
-          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 2) as avg_score,
-          MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0)) as min_score
+          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as avg_score,
+          ROUND(MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as min_score
         FROM college_specialties cs
         JOIN specialties s ON cs.specialty_id = s.id
         WHERE cs.college_id = c.id
@@ -232,8 +232,8 @@ router.get('/my', requireCollegeAccess, async (req, res) => {
         SELECT
           SUM(COALESCE(cs.budget_places, 0)) as budget_places,
           SUM(COALESCE(cs.commercial_places, 0)) as commercial_places,
-          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 2) as avg_score,
-          MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0)) as min_score
+          ROUND(AVG(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as avg_score,
+          ROUND(MIN(NULLIF(COALESCE(cs.avg_score, s.avg_score_last_year), 0))::numeric, 1) as min_score
         FROM college_specialties cs
         JOIN specialties s ON cs.specialty_id = s.id
         WHERE cs.college_id = c.id
@@ -269,7 +269,8 @@ router.put('/my', requireCollegeAccess, async (req, res) => {
     if (Object.keys(errors).length) return validationResponse(res, errors)
     const { name, description, phone, email, website, status, social_vk, social_max, social_other,
             budget_places, commercial_places, avg_score, min_score, is_professionalitet, professionalitet_cluster,
-            logo_image_url, opportunities, employers, workshops, professions, ovz_programs } = data
+            logo_image_url, opportunities, employers, workshops, professions, ovz_programs,
+            admission_method, admission_link, admission_instructions } = data
 
     const updates = []
     const params = []
@@ -278,7 +279,8 @@ router.put('/my', requireCollegeAccess, async (req, res) => {
     const fields = {
       name, description, phone, email, website, status, social_vk, social_max, social_other,
       budget_places, commercial_places, avg_score, min_score, is_professionalitet, professionalitet_cluster,
-      logo_image_url, opportunities, employers, workshops, professions, ovz_programs
+      logo_image_url, opportunities, employers, workshops, professions, ovz_programs,
+      admission_method, admission_link, admission_instructions
     }
 
     for (const [key, value] of Object.entries(fields)) {
@@ -416,7 +418,6 @@ router.get('/stats', async (req, res) => {
         LEFT JOIN college_specialties cs ON s.id = cs.specialty_id AND cs.is_active = true
         WHERE s.status = 'active'
         GROUP BY s.code, s.name
-        HAVING COUNT(DISTINCT cs.college_id) > 0
       ) grouped_specialties
     `);
 
@@ -537,6 +538,10 @@ router.get('/:id/specialties', async (req, res) => {
         cs.commercial_places,
         cs.price_per_year,
         cs.avg_score,
+        cs.teaching_address,
+        COALESCE(NULLIF(cs.admission_method, ''), NULLIF(c.admission_method, '')) as admission_method,
+        COALESCE(NULLIF(cs.admission_link, ''), NULLIF(c.admission_link, '')) as admission_link,
+        COALESCE(NULLIF(cs.admission_instructions, ''), NULLIF(c.admission_instructions, '')) as admission_instructions,
         cs.is_active,
         (
           SELECT json_agg(
@@ -549,6 +554,7 @@ router.get('/:id/specialties', async (req, res) => {
         ) as sectors
       FROM college_specialties cs
       JOIN specialties s ON cs.specialty_id = s.id
+      JOIN colleges c ON c.id = cs.college_id
       WHERE cs.college_id = $1 AND cs.is_active = true AND s.status = 'active'
       ORDER BY s.sort_order, s.name
     `;
@@ -568,6 +574,10 @@ router.get('/:id/specialties', async (req, res) => {
       commercial_places: row.commercial_places || 0,
       price_per_year: row.price_per_year || 0,
       avg_score: row.avg_score,
+      teaching_address: row.teaching_address || '',
+      admission_method: row.admission_method || '',
+      admission_link: row.admission_link || '',
+      admission_instructions: row.admission_instructions || '',
       is_active: row.is_active,
       sectors: row.sectors || []
     }));

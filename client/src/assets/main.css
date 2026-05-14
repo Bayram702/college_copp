@@ -529,12 +529,6 @@ header {
   box-shadow: 0 15px 30px rgba(0,0,0,0.1);
 }
 
-.sector-image {
-  height: 200px;
-  width: 100%;
-  object-fit: cover;
-}
-
 .sector-content {
   padding: 25px;
 }
@@ -799,6 +793,52 @@ header {
   max-width: 700px;
   margin: 0 auto 30px;
   opacity: 0.9;
+}
+
+.admission-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-top: 36px;
+  text-align: left;
+}
+
+.admission-item {
+  min-height: 190px;
+  padding: 24px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 16px 36px rgba(0, 54, 112, 0.16);
+}
+
+.admission-icon {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: white;
+  color: var(--primary-blue);
+  font-size: 1.25rem;
+}
+
+.admission-item h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.admission-item p {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.admission-item a {
+  color: white;
+  font-weight: 700;
 }
 
 .cta-section .btn-secondary {
@@ -2065,7 +2105,9 @@ footer {
 
 /* Заголовок колледжа */
 .college-header {
-  background: linear-gradient(rgba(0, 84, 166, 0.9), rgba(0, 175, 79, 0.8)), url('https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(0, 84, 166, 0.95), rgba(0, 175, 79, 0.85));
   background-size: cover;
   background-position: center;
   color: white;
@@ -3356,7 +3398,6 @@ header {
   }
 
   .college-image,
-  .sector-image,
   .college-image-prof {
     height: 160px;
   }

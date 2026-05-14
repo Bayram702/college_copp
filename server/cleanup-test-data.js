@@ -6,7 +6,7 @@ const testUserWhere = `
   login ILIKE 'e2e_%'
   OR login ILIKE 'test-%'
   OR email ILIKE '%example.com%'
-  OR name ILIKE 'E2E %'
+  OR name ILIKE '%E2E%'
   OR name ILIKE '%Test%'
 `;
 

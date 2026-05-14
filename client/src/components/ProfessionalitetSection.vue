@@ -6,7 +6,26 @@
         <p>Современная образовательная программа для подготовки специалистов по наиболее востребованным профессиям</p>
       </div>
       
-      <div class="professionalitet-card">              
+      <div class="professionalitet-card">
+        <div class="professionalitet-brand">
+          <img
+            src="/Professionalitet.png"
+            alt="Профессионалитет"
+            class="professionalitet-logo"
+          >
+          <div class="professionalitet-actions">
+            <a
+              href="https://xn--n1abdr5c.xn--p1ai/"
+              class="professionalitet-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>Узнать подробнее</span>
+              <i class="fas fa-external-link-alt"></i>
+            </a>
+          </div>
+        </div>
+
         <p><strong>«Профессионалитет»</strong> – это федеральный проект, направленный на создание в системе СПО нового уровня образования, при котором колледжи тесно сотрудничают с предприятиями-работодателями для подготовки кадров по наиболее востребованным профессиям.</p>
         
         <div class="professionalitet-info">
@@ -111,10 +130,65 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.professionalitet-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 28px;
+  padding: 10px 0 6px;
+}
+
+.professionalitet-logo {
+  display: block;
+  max-width: min(100%, 320px);
+  height: auto;
+}
+
+.professionalitet-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.professionalitet-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 12px 22px;
+  border-radius: 8px;
+  background: rgba(0, 84, 166, 0.08);
+  color: var(--primary-blue);
+  border: 1px solid rgba(0, 84, 166, 0.18);
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.professionalitet-link:hover {
+  background: var(--primary-blue);
+  color: white;
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+}
+
 .loading, .empty-message {
   text-align: center;
   padding: 40px;
   color: #666;
   font-size: 16px;
+}
+
+@media (max-width: 576px) {
+  .professionalitet-brand {
+    align-items: center;
+  }
+
+  .professionalitet-link {
+    width: 100%;
+  }
 }
 </style>

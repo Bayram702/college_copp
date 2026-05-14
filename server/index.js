@@ -9,6 +9,8 @@ const {
   notFoundHandler,
   errorHandler
 } = require('./middleware/security');
+const { ensureSchema } = require('./ensureSchema')
+const { ensureDirectoryData } = require('./ensureDirectoryData')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +45,14 @@ app.use('/api/upload', require('./routes/upload'));
 app.use('/api', notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
-});
+ensureSchema()
+  .then(() => ensureDirectoryData())
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Сервер запущен на порту ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('❌ Failed to prepare schema:', error)
+    process.exit(1)
+  })
